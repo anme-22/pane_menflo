@@ -1,0 +1,61 @@
+/**
+ * Seed de la base de datos (idempotente — se puede correr varias veces).
+ * Carga las variables de entorno (.env) antes de instanciar PrismaClient.
+ */
+import 'dotenv/config';
+import { PrismaClient, TipoUnidad } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+/**
+ * Unidades comunes. `factorABase` = cuánto vale 1 de esta unidad en la unidad
+ * base de su tipo (peso -> gramo, volumen -> mililitro).
+ */
+const unidades: {
+  nombre: string;
+  abreviatura: string;
+  tipo: TipoUnidad;
+  factorABase: string;
+}[] = [
+  // Peso (base = gramo)
+  { nombre: 'Gramo', abreviatura: 'g', tipo: TipoUnidad.peso, factorABase: '1' },
+  { nombre: 'Onza', abreviatura: 'oz', tipo: TipoUnidad.peso, factorABase: '28.3495' },
+  { nombre: 'Libra', abreviatura: 'lb', tipo: TipoUnidad.peso, factorABase: '453.592' },
+  { nombre: 'Kilogramo', abreviatura: 'kg', tipo: TipoUnidad.peso, factorABase: '1000' },
+  { nombre: 'Quintal', abreviatura: 'qq', tipo: TipoUnidad.peso, factorABase: '45359.2' },
+  // Volumen (base = mililitro)
+  { nombre: 'Mililitro', abreviatura: 'ml', tipo: TipoUnidad.volumen, factorABase: '1' },
+  { nombre: 'Litro', abreviatura: 'L', tipo: TipoUnidad.volumen, factorABase: '1000' },
+];
+
+async function main() {
+  // Unidades de medida (upsert por nombre, que es único).
+  for (const u of unidades) {
+    await prisma.unidadMedida.upsert({
+      where: { nombre: u.nombre },
+      update: { abreviatura: u.abreviatura, tipo: u.tipo, factorABase: u.factorABase },
+      create: u,
+    });
+  }
+  console.log(`✓ Unidades de medida sembradas (${unidades.length}).`);
+
+  // Sucursal por defecto: solo se crea si todavía no hay una marcada como default.
+  const sucursalDefault = await prisma.sucursal.findFirst({ where: { esDefault: true } });
+  if (!sucursalDefault) {
+    await prisma.sucursal.create({
+      data: { nombre: 'Sucursal Principal', esDefault: true, activa: true },
+    });
+    console.log('✓ Sucursal por defecto creada ("Sucursal Principal").');
+  } else {
+    console.log('• Sucursal por defecto ya existente, se omite.');
+  }
+}
+
+main()
+  .catch((e) => {
+    console.error('Error en el seed:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

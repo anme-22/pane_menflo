@@ -1,0 +1,81 @@
+/* ============================================================================
+   Estilos globales — Sistema de Panadería
+   Theming centralizado (ver CLAUDE.md §4). Una sola fuente de verdad para los
+   colores; Tailwind y PrimeNG leen las MISMAS variables. Modo oscuro por la
+   clase `.dark` en <html>.
+   ============================================================================ */
+
+@import 'tailwindcss';
+/* Puente PrimeNG <-> Tailwind: utilidades basadas en los tokens de PrimeNG. */
+@import 'tailwindcss-primeui';
+/* Iconos de PrimeNG (pi pi-*). */
+@import 'primeicons/primeicons.css';
+
+/* Modo oscuro activado por clase (la añade/quita el ThemeService en <html>). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---- Paleta primaria: NARANJA (cambiar aquí cambia toda la marca) ----
+   Definida como tokens de Tailwind: genera utilidades (bg-primary-500, ...)
+   y a la vez expone las variables CSS --color-primary-* que también usa el
+   preset de PrimeNG. La paleta primaria NO cambia entre claro y oscuro. */
+@theme {
+  --color-primary-50: #fff7ed;
+  --color-primary-100: #ffedd5;
+  --color-primary-200: #fed7aa;
+  --color-primary-300: #fdba74;
+  --color-primary-400: #fb923c;
+  --color-primary-500: #f97316; /* primario */
+  --color-primary-600: #ea580c; /* hover/acciones */
+  --color-primary-700: #c2410c;
+  --color-primary-800: #9a3412;
+  --color-primary-900: #7c2d12;
+  --color-primary-950: #431407;
+}
+
+/* ---- Superficies y texto: SÍ cambian entre claro y oscuro ----
+   Variables planas; se sobreescriben bajo html.dark. */
+:root {
+  --surface-bg: #ffffff;
+  --surface-card: #ffffff;
+  --surface-border: #e5e7eb;
+  --text-color: #1f2937;
+  --text-muted: #6b7280;
+}
+
+html.dark {
+  --surface-bg: #0f172a;
+  --surface-card: #1e293b;
+  --surface-border: #334155;
+  --text-color: #f1f5f9;
+  --text-muted: #94a3b8;
+}
+
+/* Exponer las superficies como utilidades de Tailwind (bg-surface, text-base,
+   border-surface, ...) leyendo las MISMAS variables. `inline` hace que la
+   utilidad use var(...) directamente, de modo que respeta el override dark. */
+@theme inline {
+  --color-surface: var(--surface-bg);
+  --color-surface-card: var(--surface-card);
+  --color-surface-border: var(--surface-border);
+  --color-base: var(--text-color);
+  --color-muted: var(--text-muted);
+}
+
+/* Estilos base de la página. */
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--surface-bg);
+  color: var(--text-color);
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica,
+    Arial, sans-serif;
+  /* Transición suave al alternar el tema. */
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}

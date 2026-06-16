@@ -354,7 +354,12 @@ ocultamiento de UI por rol en Angular.
 
 > Actualizar al cerrar cada feature.
 
-- [ ] Feature 1 — Setup del monorepo
+- [x] Feature 1 — Setup del monorepo
+      (Nx 22; apps/api Nest 11 + Prisma 6; apps/web Angular 21 + PrimeNG 21 +
+      Tailwind 4 con theming naranja y modo oscuro; libs/shared @pane/shared;
+      docker-compose con Postgres 16; tabla unidad_medida sembrada + enum
+      TipoUnidad; tabla sucursal con sucursal por defecto; GET /health verifica
+      la BD; README y .env.example creados.)
 - [ ] Feature 2 — Auth y usuarios
 - [ ] Feature 3 — Productos + precios históricos
 - [ ] Feature 4 — Clientes + censo

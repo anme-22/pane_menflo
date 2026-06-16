@@ -1,0 +1,42 @@
+# Dependencias
+node_modules/
+
+# Builds / salidas
+dist/
+tmp/
+out-tsc/
+
+# Cachés
+.nx/cache
+.nx/workspace-data
+.angular/cache
+.cache/
+vitest.config.*.timestamp*
+*.tsbuildinfo
+
+# Cobertura de tests
+coverage/
+
+# Variables de entorno (NO subir secretos).
+# Se versiona únicamente .env.example (ver excepción abajo).
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor / Sistema operativo
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Claude Code: la carpeta .claude/ SÍ se versiona (config compartida),
+# excepto las preferencias personales de máquina.
+.claude/settings.local.json
+
+# NOTA: las migraciones de Prisma (apps/api/prisma/migrations) SÍ se versionan.
