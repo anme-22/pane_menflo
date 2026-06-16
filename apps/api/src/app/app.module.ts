@@ -4,6 +4,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
+import { AuthModule } from './auth/auth.module';
+import { UsuariosModule } from './usuarios/usuarios.module';
 
 @Module({
   imports: [
@@ -11,6 +13,8 @@ import { HealthModule } from './health/health.module';
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     HealthModule,
+    AuthModule,
+    UsuariosModule,
   ],
   controllers: [AppController],
   providers: [AppService],

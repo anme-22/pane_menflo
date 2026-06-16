@@ -1,14 +1,14 @@
 import { Component, inject } from '@angular/core';
-import { ButtonModule } from 'primeng/button';
+import { RouterOutlet } from '@angular/router';
 import { ThemeService } from './theme/theme.service';
 
 @Component({
   selector: 'app-root',
-  imports: [ButtonModule],
-  templateUrl: './app.html',
-  styleUrl: './app.css',
+  imports: [RouterOutlet],
+  template: '<router-outlet />',
 })
 export class App {
-  protected readonly title = 'Panadería';
+  // Inyectar el ThemeService aquí garantiza que se instancie al arrancar y
+  // aplique el tema (claro/oscuro) en toda la app.
   protected readonly theme = inject(ThemeService);
 }

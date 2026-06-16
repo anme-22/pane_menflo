@@ -1,4 +1,6 @@
 import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { providePrimeNG } from 'primeng/config';
 import { App } from './app';
@@ -7,14 +9,19 @@ describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideAnimationsAsync(), providePrimeNG({})],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideAnimationsAsync(),
+        providePrimeNG({}),
+      ],
     }).compileComponents();
   });
 
-  it('should render the heading', async () => {
+  it('should create the root component (with router outlet)', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Panadería');
+    expect(fixture.componentInstance).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('router-outlet')).toBeTruthy();
   });
 });

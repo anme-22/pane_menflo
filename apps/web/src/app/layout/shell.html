@@ -1,0 +1,198 @@
+<div class="min-h-screen">
+  <!-- ============ Sidebar (escritorio, lg+) ============ -->
+  <aside
+    class="hidden border-r lg:fixed lg:inset-y-0 lg:left-0 lg:z-20 lg:flex lg:w-64 lg:flex-col"
+    style="background-color: var(--surface-card); border-color: var(--surface-border)"
+  >
+    <a
+      routerLink="/"
+      class="flex items-center gap-2 px-5 py-4 text-lg font-bold text-primary-600"
+    >
+      🥖 Panadería
+    </a>
+
+    <nav class="flex flex-col gap-1 px-3">
+      @for (item of items(); track item.route) {
+        <a
+          [routerLink]="item.route"
+          routerLinkActive="bg-primary-500/10 text-primary-600 font-semibold"
+          [routerLinkActiveOptions]="{ exact: esExacta(item) }"
+          class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-primary-500/10 hover:text-primary-600"
+        >
+          <i [class]="item.icon" class="text-base"></i>
+          {{ item.label }}
+        </a>
+      }
+    </nav>
+
+    <!-- Pie: usuario + tema + salir -->
+    <div
+      class="mt-auto flex flex-col gap-3 border-t px-4 py-4"
+      style="border-color: var(--surface-border)"
+    >
+      @if (auth.usuario(); as u) {
+        <div class="flex items-center gap-3">
+          <span
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-500/15 text-primary-600"
+          >
+            <i class="pi pi-user"></i>
+          </span>
+          <div class="min-w-0">
+            <p class="truncate text-sm font-medium">{{ u.nombre }}</p>
+            <p class="truncate text-xs text-muted">{{ u.rol }}</p>
+          </div>
+        </div>
+      }
+      <div class="flex items-center justify-between gap-2">
+        <p-button
+          [label]="theme.isDark() ? 'Modo claro' : 'Modo oscuro'"
+          [icon]="theme.isDark() ? 'pi pi-sun' : 'pi pi-moon'"
+          severity="secondary"
+          [text]="true"
+          size="small"
+          (onClick)="theme.toggle()"
+        />
+        <p-button
+          label="Salir"
+          icon="pi pi-sign-out"
+          severity="secondary"
+          [outlined]="true"
+          size="small"
+          (onClick)="auth.logout()"
+        />
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ Top bar (móvil) — solo marca para ubicarse ============ -->
+  <header
+    class="sticky top-0 z-10 flex items-center border-b px-4 py-3 lg:hidden"
+    style="background-color: var(--surface-card); border-color: var(--surface-border)"
+  >
+    <a routerLink="/" class="text-lg font-bold text-primary-600">🥖 Panadería</a>
+  </header>
+
+  <!-- ============ Contenido ============ -->
+  <main class="p-4 pb-24 sm:p-6 lg:ml-64 lg:pb-6">
+    <router-outlet />
+  </main>
+
+  <!-- ============ Bottom-bar (móvil) ============
+       Orden: Perfil · Inicio · ⋯ Más. El centro es el "slot héroe" (realzado).
+       Plan: cuando exista Facturación, "Vender" tomará el centro e Inicio se
+       moverá a la izquierda (mover su entrada en el orden de abajo). -->
+  <nav
+    class="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 items-end border-t lg:hidden"
+    style="background-color: var(--surface-card); border-color: var(--surface-border)"
+  >
+    <button
+      type="button"
+      (click)="perfilAbierto.set(true)"
+      class="flex flex-col items-center gap-0.5 py-2.5 text-xs text-muted transition-colors hover:text-primary-600"
+    >
+      <i class="pi pi-user text-lg"></i>
+      Perfil
+    </button>
+
+    <!-- Inicio: slot central, realzado como ancla -->
+    <a
+      routerLink="/"
+      routerLinkActive="text-primary-600 font-semibold"
+      [routerLinkActiveOptions]="{ exact: true }"
+      (click)="cerrarPaneles()"
+      class="group flex flex-col items-center gap-1 py-2 text-xs text-muted transition-colors"
+    >
+      <span
+        class="flex h-11 w-11 items-center justify-center rounded-full bg-primary-500/15 text-primary-600 transition-colors group-hover:bg-primary-500/25"
+      >
+        <i class="pi pi-home text-lg"></i>
+      </span>
+      Inicio
+    </a>
+
+    <button
+      type="button"
+      (click)="masAbierto.set(true)"
+      class="flex flex-col items-center gap-0.5 py-2.5 text-xs text-muted transition-colors hover:text-primary-600"
+    >
+      <i class="pi pi-ellipsis-h text-lg"></i>
+      Más
+    </button>
+  </nav>
+
+  <!-- ============ Panel "Perfil / Cuenta" (móvil) ============ -->
+  <p-drawer
+    [visible]="perfilAbierto()"
+    (visibleChange)="perfilAbierto.set($event)"
+    position="bottom"
+    header="Cuenta"
+    [style]="{ height: 'auto' }"
+  >
+    <div class="flex flex-col gap-4 pb-2">
+      @if (auth.usuario(); as u) {
+        <div class="flex items-center gap-3">
+          <span
+            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-500/15 text-primary-600"
+          >
+            <i class="pi pi-user text-lg"></i>
+          </span>
+          <div class="min-w-0">
+            <p class="truncate font-medium">{{ u.nombre }}</p>
+            <p class="truncate text-sm text-muted">{{ u.email }} · {{ u.rol }}</p>
+          </div>
+        </div>
+      }
+
+      <div
+        class="flex items-center justify-between rounded-lg border px-3 py-2"
+        style="border-color: var(--surface-border)"
+      >
+        <span class="text-sm">Tema {{ theme.isDark() ? 'oscuro' : 'claro' }}</span>
+        <p-button
+          [label]="theme.isDark() ? 'Cambiar a claro' : 'Cambiar a oscuro'"
+          [icon]="theme.isDark() ? 'pi pi-sun' : 'pi pi-moon'"
+          severity="secondary"
+          [text]="true"
+          size="small"
+          (onClick)="theme.toggle()"
+        />
+      </div>
+
+      <p-button
+        label="Salir"
+        icon="pi pi-sign-out"
+        severity="secondary"
+        [outlined]="true"
+        styleClass="w-full"
+        (onClick)="auth.logout()"
+      />
+    </div>
+  </p-drawer>
+
+  <!-- ============ Panel "Más" — navegación secundaria (móvil) ============ -->
+  <p-drawer
+    [visible]="masAbierto()"
+    (visibleChange)="masAbierto.set($event)"
+    position="bottom"
+    header="Navegación"
+    [style]="{ height: 'auto' }"
+  >
+    <div class="flex flex-col gap-1 pb-2">
+      @for (item of itemsSecundarios(); track item.route) {
+        <a
+          [routerLink]="item.route"
+          routerLinkActive="bg-primary-500/10 text-primary-600 font-semibold"
+          (click)="cerrarPaneles()"
+          class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition-colors hover:bg-primary-500/10 hover:text-primary-600"
+        >
+          <i [class]="item.icon" class="text-base"></i>
+          {{ item.label }}
+        </a>
+      } @empty {
+        <p class="px-1 py-4 text-center text-sm text-muted">
+          No hay más secciones por ahora.
+        </p>
+      }
+    </div>
+  </p-drawer>
+</div>

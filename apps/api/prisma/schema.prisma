@@ -19,6 +19,32 @@ enum TipoUnidad {
   conteo
 }
 
+/// Roles del sistema (ver CLAUDE.md §7).
+/// - super_admin: crea/gestiona usuarios; acceso total.
+/// - admin: gestiona el negocio (no necesariamente usuarios).
+/// - vendedor: vende, ve inventario/productos en consulta, gestiona clientes.
+enum RolUsuario {
+  super_admin
+  admin
+  vendedor
+}
+
+/// Usuarios del sistema. Nunca se borran: se desactivan (`activo = false`)
+/// para conservar el rastro (coherente con "no borrar registros de negocio").
+/// La contraseña SIEMPRE se guarda hasheada (bcrypt), nunca en texto plano.
+model Usuario {
+  id            Int        @id @default(autoincrement())
+  nombre        String     @db.VarChar(100)
+  email         String     @unique @db.VarChar(150)
+  passwordHash  String     @map("password_hash")
+  rol           RolUsuario
+  activo        Boolean    @default(true)
+  creadoEn      DateTime   @default(now()) @map("creado_en")
+  actualizadoEn DateTime   @updatedAt @map("actualizado_en")
+
+  @@map("usuario")
+}
+
 /// Catálogo de unidades de medida.
 /// `factorABase` = cuánto vale 1 de esta unidad en la unidad base de su tipo.
 /// Convertir entre dos unidades del mismo tipo:

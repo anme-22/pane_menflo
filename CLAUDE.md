@@ -163,6 +163,22 @@ html.dark {
   preferencia en `localStorage`**. Al cargar la app, respeta la preferencia
   guardada y, si no hay, usa `prefers-color-scheme`.
 
+### 4.1 Layout y navegación (convención)
+- La navegación vive en el **shell** (`apps/web/src/app/layout`) y sus ítems
+  salen de **una sola fuente**: `layout/nav.ts` (`NAV_ITEMS`). **Cada feature que
+  añada una pantalla registra ahí su ítem** (con `roles` si aplica); no se
+  hardcodea la navegación en cada plantilla.
+- **Escritorio (`lg+`):** sidebar fija a la izquierda con todos los ítems y, al
+  pie, usuario + toggle de tema + Salir. La sidebar usa el mismo lenguaje de
+  superficie (variables CSS) con un borde sutil, no un color que fragmente.
+- **Móvil (`<lg`):** **bottom-bar** con **Perfil · Inicio · ⋯ Más**. El slot
+  **central** es el "héroe" (realzado): hoy lo ocupa *Inicio*. *Perfil* abre un
+  panel (`p-drawer` inferior) de cuenta (usuario, tema, Salir); *Más* abre la
+  navegación secundaria (el resto de `NAV_ITEMS`). **Plan:** cuando exista
+  Facturación, **"Vender" tomará el centro e Inicio se moverá a la izquierda**.
+- Ítems siempre filtrados por rol; un solo set de iconos (**primeicons**);
+  estados hover/focus y, en oscuro, apoyarse en bordes.
+
 ---
 
 ## 5. Principios SOLID (aplicarlos siempre)
@@ -360,7 +376,22 @@ ocultamiento de UI por rol en Angular.
       docker-compose con Postgres 16; tabla unidad_medida sembrada + enum
       TipoUnidad; tabla sucursal con sucursal por defecto; GET /health verifica
       la BD; README y .env.example creados.)
-- [ ] Feature 2 — Auth y usuarios
+- [x] Feature 2 — Auth y usuarios
+      (Prisma: enum RolUsuario + tabla usuario con password_hash, activo y
+      timestamps; migración versionada; seed de super_admin desde .env
+      SUPERADMIN_*. API Nest: AuthModule con login JWT [solo access token,
+      @nestjs/jwt + passport-jwt], hash con bcryptjs, JwtAuthGuard + RolesGuard
+      + @Roles/@CurrentUser; UsuariosModule con CRUD solo super_admin y SIN
+      borrado [activar/desactivar]; rutas protegidas devuelven 401/403.
+      libs/shared: RolUsuario, UsuarioDto, Login/Crear/Actualizar DTOs y
+      JwtPayload. Web Angular: AuthService con signals + localStorage,
+      authInterceptor [Bearer + 401→login], authGuard y rolGuard, pantalla de
+      login [Reactive Forms + PrimeNG, naranja, claro/oscuro, responsive],
+      shell con navegación por rol y logout, pantalla de usuarios [tabla +
+      diálogo crear/editar + activar/desactivar] solo para super_admin; proxy
+      /api en dev. Variables nuevas en .env(.example): JWT_SECRET,
+      JWT_EXPIRES_IN, SUPERADMIN_EMAIL/PASSWORD/NOMBRE. Verificado: login OK,
+      401 sin token, 403 por rol, vendedor no ve Usuarios; tests api+web verdes.)
 - [ ] Feature 3 — Productos + precios históricos
 - [ ] Feature 4 — Clientes + censo
 - [ ] Feature 5 — Insumos, unidades y compras

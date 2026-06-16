@@ -1,0 +1,148 @@
+<p-toast />
+
+<section class="mx-auto max-w-5xl">
+  <div class="mb-4 flex items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-primary-600">Usuarios</h1>
+      <p class="text-sm text-muted">Gestión de accesos al sistema.</p>
+    </div>
+    <p-button label="Nuevo usuario" icon="pi pi-plus" (onClick)="abrirNuevo()" />
+  </div>
+
+  <div
+    class="overflow-hidden rounded-xl border"
+    style="background-color: var(--surface-card); border-color: var(--surface-border)"
+  >
+    <p-table
+      [value]="usuarios()"
+      [loading]="cargando()"
+      [paginator]="usuarios().length > 10"
+      [rows]="10"
+      responsiveLayout="stack"
+      [breakpoint]="'640px'"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Nombre</th>
+          <th>Email</th>
+          <th>Rol</th>
+          <th>Estado</th>
+          <th class="text-right">Acciones</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-u>
+        <tr>
+          <td><span class="p-column-title font-medium sm:hidden">Nombre </span>{{ u.nombre }}</td>
+          <td><span class="p-column-title font-medium sm:hidden">Email </span>{{ u.email }}</td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Rol </span>
+            <p-tag [value]="etiquetaRol(u.rol)" severity="info" />
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Estado </span>
+            <p-tag
+              [value]="u.activo ? 'Activo' : 'Inactivo'"
+              [severity]="u.activo ? 'success' : 'secondary'"
+            />
+          </td>
+          <td class="text-right whitespace-nowrap">
+            <p-button
+              icon="pi pi-pencil"
+              severity="secondary"
+              [text]="true"
+              [rounded]="true"
+              ariaLabel="Editar"
+              (onClick)="abrirEdicion(u)"
+            />
+            <p-button
+              [icon]="u.activo ? 'pi pi-ban' : 'pi pi-check'"
+              [severity]="u.activo ? 'danger' : 'success'"
+              [text]="true"
+              [rounded]="true"
+              [ariaLabel]="u.activo ? 'Desactivar' : 'Activar'"
+              (onClick)="alternarEstado(u)"
+            />
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="5" class="p-4 text-center text-muted">No hay usuarios.</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</section>
+
+<!-- Diálogo de alta / edición -->
+<p-dialog
+  [visible]="dialogVisible()"
+  (visibleChange)="dialogVisible.set($event)"
+  [modal]="true"
+  [style]="{ width: '28rem' }"
+  [header]="editandoId() === null ? 'Nuevo usuario' : 'Editar usuario'"
+  [dismissableMask]="true"
+>
+  <form [formGroup]="form" (ngSubmit)="guardar()" class="flex flex-col gap-4 pt-2">
+    <div class="flex flex-col gap-1">
+      <label for="nombre" class="text-sm font-medium">Nombre</label>
+      <input pInputText id="nombre" formControlName="nombre" class="w-full" />
+      @if (form.controls.nombre.touched && form.controls.nombre.invalid) {
+        <small class="text-red-500">El nombre es obligatorio.</small>
+      }
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="email" class="text-sm font-medium">Email</label>
+      <input pInputText id="email" type="email" formControlName="email" class="w-full" />
+      @if (form.controls.email.touched && form.controls.email.invalid) {
+        <small class="text-red-500">Introduce un email válido.</small>
+      }
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="password" class="text-sm font-medium">
+        Contraseña
+        @if (editandoId() !== null) {
+          <span class="text-muted">(dejar vacío para no cambiarla)</span>
+        }
+      </label>
+      <p-password
+        inputId="password"
+        formControlName="password"
+        [feedback]="false"
+        [toggleMask]="true"
+        styleClass="w-full"
+        inputStyleClass="w-full"
+      />
+      @if (form.controls.password.touched && form.controls.password.invalid) {
+        <small class="text-red-500">Mínimo 8 caracteres.</small>
+      }
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="rol" class="text-sm font-medium">Rol</label>
+      <p-select
+        inputId="rol"
+        formControlName="rol"
+        [options]="opcionesRol"
+        optionLabel="label"
+        optionValue="value"
+        styleClass="w-full"
+      />
+    </div>
+
+    <div class="mt-2 flex justify-end gap-2">
+      <p-button
+        type="button"
+        label="Cancelar"
+        severity="secondary"
+        [text]="true"
+        (onClick)="dialogVisible.set(false)"
+      />
+      <p-button type="submit" label="Guardar" icon="pi pi-check" [loading]="guardando()" />
+    </div>
+  </form>
+</p-dialog>

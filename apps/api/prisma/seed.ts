@@ -3,7 +3,8 @@
  * Carga las variables de entorno (.env) antes de instanciar PrismaClient.
  */
 import 'dotenv/config';
-import { PrismaClient, TipoUnidad } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
+import { PrismaClient, RolUsuario, TipoUnidad } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -48,6 +49,31 @@ async function main() {
     console.log('✓ Sucursal por defecto creada ("Sucursal Principal").');
   } else {
     console.log('• Sucursal por defecto ya existente, se omite.');
+  }
+
+  // Super admin inicial: solo se crea si todavía no existe ningún super_admin.
+  // Las credenciales vienen del .env para no hardcodear secretos.
+  const yaHaySuperAdmin = await prisma.usuario.findFirst({
+    where: { rol: RolUsuario.super_admin },
+  });
+  if (!yaHaySuperAdmin) {
+    const email = process.env.SUPERADMIN_EMAIL;
+    const password = process.env.SUPERADMIN_PASSWORD;
+    const nombre = process.env.SUPERADMIN_NOMBRE ?? 'Super Admin';
+
+    if (!email || !password) {
+      console.warn(
+        '⚠ No se sembró super_admin: define SUPERADMIN_EMAIL y SUPERADMIN_PASSWORD en .env',
+      );
+    } else {
+      const passwordHash = await bcrypt.hash(password, 10);
+      await prisma.usuario.create({
+        data: { nombre, email, passwordHash, rol: RolUsuario.super_admin, activo: true },
+      });
+      console.log(`✓ Super admin creado (${email}).`);
+    }
+  } else {
+    console.log('• Ya existe un super_admin, se omite.');
   }
 }
 
