@@ -60,6 +60,39 @@ model UnidadMedida {
   @@map("unidad_medida")
 }
 
+/// Producto del catálogo. NO se borra: se desactiva (`activo = false`).
+/// El precio NO vive aquí; está en `precio_producto` con historial de vigencia.
+model Producto {
+  id            Int      @id @default(autoincrement())
+  nombre        String   @db.VarChar(150)
+  descripcion   String?  @db.VarChar(500)
+  activo        Boolean  @default(true)
+  creadoEn      DateTime @default(now()) @map("creado_en")
+  actualizadoEn DateTime @updatedAt @map("actualizado_en")
+
+  precios PrecioProducto[]
+
+  @@map("producto")
+}
+
+/// Historial de precios de un producto. El precio ACTUAL es el de
+/// `vigenteHasta = NULL`. Al cambiar el precio NO se edita en sitio: se cierra
+/// el vigente (`vigenteHasta = ahora`) y se crea uno nuevo. La migración añade
+/// un índice ÚNICO PARCIAL que garantiza un solo precio vigente por producto y
+/// un CHECK de precio > 0.
+model PrecioProducto {
+  id           Int       @id @default(autoincrement())
+  productoId   Int       @map("producto_id")
+  precio       Decimal   @db.Decimal(12, 2)
+  vigenteDesde DateTime  @default(now()) @map("vigente_desde")
+  vigenteHasta DateTime? @map("vigente_hasta")
+
+  producto Producto @relation(fields: [productoId], references: [id])
+
+  @@index([productoId])
+  @@map("precio_producto")
+}
+
 /// Sucursales del negocio. Esqueleto para esta etapa: se siembra una por
 /// defecto y se usará como sucursal automática en features posteriores
 /// (inventario, producción, facturas). Sin selector ni administración aún.

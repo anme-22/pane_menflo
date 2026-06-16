@@ -1,0 +1,253 @@
+<p-toast />
+
+<section class="mx-auto max-w-5xl">
+  <div class="mb-4 flex items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-primary-600">Productos</h1>
+      <p class="text-sm text-muted">Catálogo y precios.</p>
+    </div>
+    @if (puedeGestionar()) {
+      <p-button label="Nuevo producto" icon="pi pi-plus" (onClick)="abrirNuevo()" />
+    }
+  </div>
+
+  <div
+    class="overflow-hidden rounded-xl border"
+    style="background-color: var(--surface-card); border-color: var(--surface-border)"
+  >
+    <p-table
+      [value]="productos()"
+      [loading]="cargando()"
+      [paginator]="productos().length > 10"
+      [rows]="10"
+      responsiveLayout="stack"
+      [breakpoint]="'640px'"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Nombre</th>
+          <th>Descripción</th>
+          <th>Precio</th>
+          <th>Estado</th>
+          <th class="text-right">Acciones</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-p>
+        <tr>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Nombre </span>{{ p.nombre }}
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Descripción </span>
+            <span class="text-muted">{{ p.descripcion || '—' }}</span>
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Precio </span>
+            <span class="font-medium">{{ precioTexto(p.precioVigente) }}</span>
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Estado </span>
+            <p-tag
+              [value]="p.activo ? 'Activo' : 'Inactivo'"
+              [severity]="p.activo ? 'success' : 'secondary'"
+            />
+          </td>
+          <td class="text-right whitespace-nowrap">
+            <p-button
+              icon="pi pi-history"
+              severity="secondary"
+              [text]="true"
+              [rounded]="true"
+              ariaLabel="Historial de precios"
+              (onClick)="abrirHistorial(p)"
+            />
+            @if (puedeGestionar()) {
+              <p-button
+                icon="pi pi-dollar"
+                severity="secondary"
+                [text]="true"
+                [rounded]="true"
+                ariaLabel="Cambiar precio"
+                (onClick)="abrirCambioPrecio(p)"
+              />
+              <p-button
+                icon="pi pi-pencil"
+                severity="secondary"
+                [text]="true"
+                [rounded]="true"
+                ariaLabel="Editar"
+                (onClick)="abrirEdicion(p)"
+              />
+              <p-button
+                [icon]="p.activo ? 'pi pi-ban' : 'pi pi-check'"
+                [severity]="p.activo ? 'danger' : 'success'"
+                [text]="true"
+                [rounded]="true"
+                [ariaLabel]="p.activo ? 'Desactivar' : 'Activar'"
+                (onClick)="alternarEstado(p)"
+              />
+            }
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="5" class="p-4 text-center text-muted">
+            No hay productos todavía.
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</section>
+
+<!-- Diálogo crear / editar producto -->
+<p-dialog
+  [visible]="formVisible()"
+  (visibleChange)="formVisible.set($event)"
+  [modal]="true"
+  [style]="{ width: '28rem' }"
+  [header]="editandoId() === null ? 'Nuevo producto' : 'Editar producto'"
+  [dismissableMask]="true"
+>
+  <form [formGroup]="form" (ngSubmit)="guardar()" class="flex flex-col gap-4 pt-2">
+    <div class="flex flex-col gap-1">
+      <label for="nombre" class="text-sm font-medium">Nombre</label>
+      <input pInputText id="nombre" formControlName="nombre" class="w-full" />
+      @if (form.controls.nombre.touched && form.controls.nombre.invalid) {
+        <small class="text-red-500">El nombre es obligatorio.</small>
+      }
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="descripcion" class="text-sm font-medium">Descripción</label>
+      <textarea
+        pTextarea
+        id="descripcion"
+        formControlName="descripcion"
+        rows="2"
+        class="w-full"
+      ></textarea>
+    </div>
+
+    @if (editandoId() === null) {
+      <div class="flex flex-col gap-1">
+        <label for="precio" class="text-sm font-medium">Precio inicial</label>
+        <p-inputnumber
+          inputId="precio"
+          formControlName="precio"
+          mode="currency"
+          currency="HNL"
+          locale="es-HN"
+          [min]="0"
+          styleClass="w-full"
+          inputStyleClass="w-full"
+        />
+        @if (form.controls.precio.touched && form.controls.precio.invalid) {
+          <small class="text-red-500">Indica un precio mayor que 0.</small>
+        }
+      </div>
+    } @else {
+      <p class="rounded-lg border px-3 py-2 text-sm text-muted" style="border-color: var(--surface-border)">
+        El precio se cambia con la acción <strong>Cambiar precio</strong> (deja
+        historial).
+      </p>
+    }
+
+    <div class="mt-2 flex justify-end gap-2">
+      <p-button
+        type="button"
+        label="Cancelar"
+        severity="secondary"
+        [text]="true"
+        (onClick)="formVisible.set(false)"
+      />
+      <p-button type="submit" label="Guardar" icon="pi pi-check" [loading]="guardando()" />
+    </div>
+  </form>
+</p-dialog>
+
+<!-- Diálogo cambiar precio -->
+<p-dialog
+  [visible]="precioVisible()"
+  (visibleChange)="precioVisible.set($event)"
+  [modal]="true"
+  [style]="{ width: '24rem' }"
+  header="Cambiar precio"
+  [dismissableMask]="true"
+>
+  @if (precioProducto(); as p) {
+    <form [formGroup]="formPrecio" (ngSubmit)="guardarPrecio()" class="flex flex-col gap-4 pt-2">
+      <p class="text-sm text-muted">
+        <strong class="text-base" style="color: var(--text-color)">{{ p.nombre }}</strong><br />
+        Precio actual: {{ precioTexto(p.precioVigente) }}
+      </p>
+      <div class="flex flex-col gap-1">
+        <label for="nuevoPrecio" class="text-sm font-medium">Nuevo precio</label>
+        <p-inputnumber
+          inputId="nuevoPrecio"
+          formControlName="precio"
+          mode="currency"
+          currency="HNL"
+          locale="es-HN"
+          [min]="0"
+          styleClass="w-full"
+          inputStyleClass="w-full"
+        />
+        @if (formPrecio.controls.precio.touched && formPrecio.controls.precio.invalid) {
+          <small class="text-red-500">Indica un precio mayor que 0.</small>
+        }
+      </div>
+      <p class="text-xs text-muted">
+        Se cerrará el precio vigente y se abrirá el nuevo; el anterior queda en el
+        historial.
+      </p>
+      <div class="mt-1 flex justify-end gap-2">
+        <p-button
+          type="button"
+          label="Cancelar"
+          severity="secondary"
+          [text]="true"
+          (onClick)="precioVisible.set(false)"
+        />
+        <p-button type="submit" label="Guardar precio" icon="pi pi-check" [loading]="guardando()" />
+      </div>
+    </form>
+  }
+</p-dialog>
+
+<!-- Drawer historial de precios -->
+<p-drawer
+  [visible]="historialVisible()"
+  (visibleChange)="historialVisible.set($event)"
+  position="right"
+  [header]="'Historial de precios'"
+  [style]="{ width: '24rem' }"
+>
+  @if (historialProducto(); as p) {
+    <p class="mb-3 font-medium">{{ p.nombre }}</p>
+  }
+  <ol class="flex flex-col gap-2">
+    @for (h of historial(); track h.id) {
+      <li
+        class="rounded-lg border px-3 py-2"
+        style="border-color: var(--surface-border)"
+        [class.border-primary-500]="h.vigenteHasta === null"
+      >
+        <div class="flex items-center justify-between">
+          <span class="font-medium">{{ precioTexto(h.precio) }}</span>
+          @if (h.vigenteHasta === null) {
+            <p-tag value="Vigente" severity="success" />
+          }
+        </div>
+        <p class="mt-1 text-xs text-muted">
+          {{ fechaTexto(h.vigenteDesde) }} → {{ fechaTexto(h.vigenteHasta) }}
+        </p>
+      </li>
+    } @empty {
+      <li class="py-4 text-center text-sm text-muted">Sin historial.</li>
+    }
+  </ol>
+</p-drawer>
