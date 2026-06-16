@@ -1,0 +1,26 @@
+# Docker Compose para desarrollo local.
+# Feature 1: solo levanta PostgreSQL. La API y la web se añadirán en la
+# feature de despliegue. Todas las credenciales vienen de variables de entorno
+# (archivo .env en la raíz); nada está hardcodeado aquí.
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: pane-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      # Puerto del host configurable; dentro del contenedor siempre es 5432.
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - pane_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pane_pgdata:

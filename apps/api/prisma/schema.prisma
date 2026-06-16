@@ -1,0 +1,48 @@
+// Esquema de Prisma — Sistema de Panadería
+// Dominio y nombres de tablas/columnas en español (snake_case en la BD).
+// Feature 1: solo unidad_medida (con su enum) y sucursal (una por defecto).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Tipo (categoría) de una unidad de medida. Cada tipo tiene una unidad base:
+/// peso -> gramo, volumen -> mililitro, conteo -> unidad.
+enum TipoUnidad {
+  peso
+  volumen
+  conteo
+}
+
+/// Catálogo de unidades de medida.
+/// `factorABase` = cuánto vale 1 de esta unidad en la unidad base de su tipo.
+/// Convertir entre dos unidades del mismo tipo:
+///   cantidad * factor_origen / factor_destino
+/// Agregar una unidad nueva = insertar una fila (sin tocar código).
+model UnidadMedida {
+  id          Int        @id @default(autoincrement())
+  nombre      String     @unique @db.VarChar(50)
+  abreviatura String     @db.VarChar(10)
+  tipo        TipoUnidad
+  factorABase Decimal    @map("factor_a_base") @db.Decimal(18, 6)
+
+  @@map("unidad_medida")
+}
+
+/// Sucursales del negocio. Esqueleto para esta etapa: se siembra una por
+/// defecto y se usará como sucursal automática en features posteriores
+/// (inventario, producción, facturas). Sin selector ni administración aún.
+model Sucursal {
+  id        Int      @id @default(autoincrement())
+  nombre    String   @db.VarChar(100)
+  esDefault Boolean  @default(false) @map("es_default")
+  activa    Boolean  @default(true)
+  creadaEn  DateTime @default(now()) @map("creada_en")
+
+  @@map("sucursal")
+}

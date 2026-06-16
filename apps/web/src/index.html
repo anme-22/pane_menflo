@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Panadería</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <script>
+      // Aplica el tema guardado (o el del sistema) antes de pintar, para evitar
+      // el parpadeo. El ThemeService toma el control una vez carga Angular.
+      (function () {
+        try {
+          var saved = localStorage.getItem('pane-theme');
+          var dark =
+            saved === 'dark' ||
+            (!saved &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <app-root></app-root>
+  </body>
+</html>
