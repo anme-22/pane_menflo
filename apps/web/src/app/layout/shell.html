@@ -1,0 +1,60 @@
+<div class="flex min-h-screen flex-col">
+  <!-- Barra superior -->
+  <header
+    class="sticky top-0 z-10 flex flex-wrap items-center gap-x-6 gap-y-2 border-b px-4 py-3"
+    style="background-color: var(--surface-card); border-color: var(--surface-border)"
+  >
+    <a routerLink="/" class="text-lg font-bold text-primary-600">🥖 Panadería</a>
+
+    <nav class="flex items-center gap-1">
+      <a
+        routerLink="/"
+        routerLinkActive="text-primary-600 font-semibold"
+        [routerLinkActiveOptions]="{ exact: true }"
+        class="rounded-md px-3 py-1.5 text-sm hover:text-primary-600"
+      >
+        Inicio
+      </a>
+      <!-- Solo el super_admin ve la gestión de usuarios -->
+      @if (auth.esSuperAdmin()) {
+        <a
+          routerLink="/usuarios"
+          routerLinkActive="text-primary-600 font-semibold"
+          class="rounded-md px-3 py-1.5 text-sm hover:text-primary-600"
+        >
+          Usuarios
+        </a>
+      }
+    </nav>
+
+    <div class="ml-auto flex items-center gap-3">
+      @if (auth.usuario(); as u) {
+        <span class="hidden text-sm sm:inline">
+          {{ u.nombre }}
+          <span class="text-muted">· {{ u.rol }}</span>
+        </span>
+      }
+      <p-button
+        severity="secondary"
+        [text]="true"
+        [rounded]="true"
+        [icon]="theme.isDark() ? 'pi pi-sun' : 'pi pi-moon'"
+        [ariaLabel]="theme.isDark() ? 'Modo claro' : 'Modo oscuro'"
+        (onClick)="theme.toggle()"
+      />
+      <p-button
+        label="Salir"
+        icon="pi pi-sign-out"
+        severity="secondary"
+        [outlined]="true"
+        size="small"
+        (onClick)="auth.logout()"
+      />
+    </div>
+  </header>
+
+  <!-- Contenido de la ruta activa -->
+  <main class="flex-1 p-4 sm:p-6">
+    <router-outlet />
+  </main>
+</div>

@@ -1,0 +1,68 @@
+<main class="flex min-h-screen items-center justify-center p-4">
+  <!-- Toggle de tema arriba a la derecha -->
+  <p-button
+    class="!absolute right-4 top-4"
+    severity="secondary"
+    [text]="true"
+    [rounded]="true"
+    [icon]="theme.isDark() ? 'pi pi-sun' : 'pi pi-moon'"
+    [ariaLabel]="theme.isDark() ? 'Modo claro' : 'Modo oscuro'"
+    (onClick)="theme.toggle()"
+  />
+
+  <section
+    class="w-full max-w-sm rounded-2xl border p-8 shadow-lg"
+    style="background-color: var(--surface-card); border-color: var(--surface-border)"
+  >
+    <header class="mb-6 text-center">
+      <h1 class="text-3xl font-bold text-primary-600">🥖 Panadería</h1>
+      <p class="mt-1 text-sm text-muted">Inicia sesión para continuar</p>
+    </header>
+
+    <form [formGroup]="form" (ngSubmit)="enviar()" class="flex flex-col gap-4">
+      <div class="flex flex-col gap-1">
+        <label for="email" class="text-sm font-medium">Email</label>
+        <input
+          pInputText
+          id="email"
+          type="email"
+          autocomplete="username"
+          formControlName="email"
+          class="w-full"
+          [class.ng-invalid]="false"
+        />
+        @if (form.controls.email.touched && form.controls.email.invalid) {
+          <small class="text-red-500">Introduce un email válido.</small>
+        }
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label for="password" class="text-sm font-medium">Contraseña</label>
+        <p-password
+          inputId="password"
+          formControlName="password"
+          [feedback]="false"
+          [toggleMask]="true"
+          autocomplete="current-password"
+          styleClass="w-full"
+          inputStyleClass="w-full"
+        />
+        @if (form.controls.password.touched && form.controls.password.invalid) {
+          <small class="text-red-500">La contraseña es obligatoria.</small>
+        }
+      </div>
+
+      @if (error()) {
+        <p-message severity="error" styleClass="w-full">{{ error() }}</p-message>
+      }
+
+      <p-button
+        type="submit"
+        label="Entrar"
+        icon="pi pi-sign-in"
+        styleClass="w-full"
+        [loading]="cargando()"
+      />
+    </form>
+  </section>
+</main>
