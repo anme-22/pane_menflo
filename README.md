@@ -18,7 +18,7 @@ recetas, producción y reportes. Backend en **NestJS + Prisma**, frontend en
 
 ## Requisitos
 
-- **Node.js 20+** y **npm**
+- **Node.js 20+** y **pnpm** (puedes activarlo con `corepack enable pnpm`)
 - **Docker Desktop** (para PostgreSQL)
 
 ## Puesta en marcha (local)
@@ -26,7 +26,7 @@ recetas, producción y reportes. Backend en **NestJS + Prisma**, frontend en
 ### 1. Instalar dependencias
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### 2. Variables de entorno
@@ -54,15 +54,15 @@ Para la autenticación (Feature 2) define además:
 ### 3. Levantar PostgreSQL
 
 ```bash
-npm run db:up        # docker compose up -d  (Postgres en el puerto 5432)
+pnpm db:up           # docker compose up -d  (Postgres en el puerto 5432)
 ```
 
 ### 4. Crear el esquema y sembrar datos
 
 ```bash
-npm run prisma:generate   # genera el cliente de Prisma
-npm run prisma:migrate    # crea/aplica las migraciones
-npm run prisma:seed       # siembra unidades de medida + sucursal por defecto
+pnpm prisma:generate   # genera el cliente de Prisma
+pnpm prisma:migrate    # crea/aplica las migraciones
+pnpm prisma:seed       # siembra unidades de medida + sucursal por defecto
 ```
 
 > `prisma:migrate` en una BD nueva también ejecuta el seed automáticamente.
@@ -76,7 +76,7 @@ no existe ninguno.
 ### 5. Arrancar la API
 
 ```bash
-npx nx serve api
+pnpm nx serve api
 ```
 
 - API: `http://localhost:3000/api`
@@ -85,7 +85,7 @@ npx nx serve api
 ### 6. Arrancar la web
 
 ```bash
-npx nx serve web
+pnpm nx serve web
 ```
 
 - Web: `http://localhost:4200`
@@ -109,19 +109,19 @@ npx nx serve web
 
 ## Scripts útiles
 
-| Script                     | Qué hace                                            |
-| -------------------------- | --------------------------------------------------- |
-| `npm run db:up`            | Levanta PostgreSQL con Docker                       |
-| `npm run db:down`          | Detiene y elimina el contenedor de Postgres         |
-| `npm run prisma:generate`  | Genera el cliente de Prisma                         |
-| `npm run prisma:migrate`   | Crea y aplica migraciones (modo dev)                |
-| `npm run prisma:seed`      | Ejecuta el seed                                     |
-| `npm run prisma:reset`     | Reinicia la BD (borra datos), re-migra y re-siembra |
-| `npm run prisma:studio`    | Abre Prisma Studio                                  |
-| `npx nx serve api`         | Sirve la API en modo desarrollo                     |
-| `npx nx serve web`         | Sirve la web en modo desarrollo                     |
-| `npx nx run-many -t build` | Compila todos los proyectos                         |
-| `npx nx run-many -t test`  | Corre las pruebas                                   |
+| Script                      | Qué hace                                            |
+| --------------------------- | --------------------------------------------------- |
+| `pnpm db:up`                | Levanta PostgreSQL con Docker                       |
+| `pnpm db:down`              | Detiene y elimina el contenedor de Postgres         |
+| `pnpm prisma:generate`      | Genera el cliente de Prisma                         |
+| `pnpm prisma:migrate`       | Crea y aplica migraciones (modo dev)                |
+| `pnpm prisma:seed`          | Ejecuta el seed                                     |
+| `pnpm prisma:reset`         | Reinicia la BD (borra datos), re-migra y re-siembra |
+| `pnpm prisma:studio`        | Abre Prisma Studio                                  |
+| `pnpm nx serve api`         | Sirve la API en modo desarrollo                     |
+| `pnpm nx serve web`         | Sirve la web en modo desarrollo                     |
+| `pnpm nx run-many -t build` | Compila todos los proyectos                         |
+| `pnpm nx run-many -t test`  | Corre las pruebas                                   |
 
 ## Estructura
 
