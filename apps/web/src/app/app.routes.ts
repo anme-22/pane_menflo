@@ -25,6 +25,12 @@ export const appRoutes: Route[] = [
           import('./features/productos/productos').then((m) => m.ProductosPage),
       },
       {
+        path: 'clientes',
+        // Visible a cualquier autenticado; los tres roles gestionan clientes.
+        loadComponent: () =>
+          import('./features/clientes/clientes').then((m) => m.ClientesPage),
+      },
+      {
         path: 'usuarios',
         // Solo super_admin (además de ocultarse en la UI).
         canActivate: [rolGuard('super_admin')],

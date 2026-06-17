@@ -18,5 +18,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Inicio', icon: 'pi pi-home', route: '/' },
   // Productos: visible a todos los roles (el vendedor lo ve en consulta).
   { label: 'Productos', icon: 'pi pi-box', route: '/productos' },
+  // Clientes: visible a todos los roles (el vendedor también los gestiona).
+  { label: 'Clientes', icon: 'pi pi-id-card', route: '/clientes' },
   { label: 'Usuarios', icon: 'pi pi-users', route: '/usuarios', roles: ['super_admin'] },
 ];
