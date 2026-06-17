@@ -27,6 +27,8 @@ const unidades: {
   // Volumen (base = mililitro)
   { nombre: 'Mililitro', abreviatura: 'ml', tipo: TipoUnidad.volumen, factorABase: '1' },
   { nombre: 'Litro', abreviatura: 'L', tipo: TipoUnidad.volumen, factorABase: '1000' },
+  // Conteo (base = unidad)
+  { nombre: 'Unidad', abreviatura: 'u', tipo: TipoUnidad.conteo, factorABase: '1' },
 ];
 
 async function main() {

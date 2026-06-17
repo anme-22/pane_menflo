@@ -31,6 +31,19 @@ export const appRoutes: Route[] = [
           import('./features/clientes/clientes').then((m) => m.ClientesPage),
       },
       {
+        path: 'insumos',
+        // Visible a cualquier autenticado; la gestión se controla en la UI/API.
+        loadComponent: () =>
+          import('./features/insumos/insumos').then((m) => m.InsumosPage),
+      },
+      {
+        path: 'compras',
+        // Operación de costo: solo admin/super_admin.
+        canActivate: [rolGuard('admin', 'super_admin')],
+        loadComponent: () =>
+          import('./features/compras/compras').then((m) => m.ComprasPage),
+      },
+      {
         path: 'usuarios',
         // Solo super_admin (además de ocultarse en la UI).
         canActivate: [rolGuard('super_admin')],

@@ -1,0 +1,174 @@
+<p-toast />
+
+<section class="mx-auto max-w-5xl">
+  <div class="mb-4 flex items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-primary-600">Compras</h1>
+      <p class="text-sm text-muted">Registro de lotes y costo por unidad base.</p>
+    </div>
+    <p-button label="Registrar compra" icon="pi pi-plus" (onClick)="abrirNueva()" />
+  </div>
+
+  <div
+    class="overflow-hidden rounded-xl border"
+    style="background-color: var(--surface-card); border-color: var(--surface-border)"
+  >
+    <p-table
+      [value]="compras()"
+      [loading]="cargando()"
+      [paginator]="compras().length > 10"
+      [rows]="10"
+      responsiveLayout="stack"
+      [breakpoint]="'640px'"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Fecha</th>
+          <th>Insumo</th>
+          <th>Cantidad</th>
+          <th>Costo total</th>
+          <th>En base</th>
+          <th>Costo/u. base</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-c>
+        <tr>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Fecha </span>{{ fechaTexto(c.fecha) }}
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Insumo </span>{{ c.insumoNombre }}
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Cantidad </span>
+            {{ cantidadTexto(c.cantidadCompra) }} {{ c.unidadCompraAbrev }}
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Costo total </span>
+            <span class="font-medium">{{ dineroTexto(c.costo) }}</span>
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">En base </span>
+            <span class="text-muted">{{ cantidadTexto(c.cantidadBase) }}</span>
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Costo/u. base </span>
+            {{ dineroFinoTexto(c.costoPorUnidadBase) }}
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="6" class="p-4 text-center text-muted">
+            No hay compras registradas todavía.
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</section>
+
+<!-- Diálogo registrar compra -->
+<p-dialog
+  [visible]="formVisible()"
+  (visibleChange)="formVisible.set($event)"
+  [modal]="true"
+  [style]="{ width: '30rem' }"
+  header="Registrar compra"
+  [dismissableMask]="true"
+>
+  <form [formGroup]="form" (ngSubmit)="guardar()" class="flex flex-col gap-4 pt-2">
+    <div class="flex flex-col gap-1">
+      <label for="insumo" class="text-sm font-medium">Insumo</label>
+      <p-select
+        inputId="insumo"
+        formControlName="insumoId"
+        [options]="insumosActivos()"
+        optionLabel="nombre"
+        optionValue="id"
+        placeholder="Selecciona un insumo"
+        emptyMessage="No hay insumos activos. Créalos o actívalos en Insumos."
+        appendTo="body"
+        styleClass="w-full"
+        (onChange)="alCambiarInsumo($event.value)"
+      />
+      @if (insumosActivos().length === 0) {
+        <small class="text-muted">
+          Solo aparecen insumos activos. Crea o reactiva uno en
+          <strong>Insumos</strong>.
+        </small>
+      }
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div class="flex flex-col gap-1">
+        <label for="cantidad" class="text-sm font-medium">Cantidad</label>
+        <p-inputnumber
+          inputId="cantidad"
+          formControlName="cantidad"
+          [min]="0"
+          [maxFractionDigits]="4"
+          styleClass="w-full"
+          inputStyleClass="w-full"
+        />
+      </div>
+      <div class="flex flex-col gap-1">
+        <label for="unidad" class="text-sm font-medium">Unidad de compra</label>
+        <p-select
+          inputId="unidad"
+          formControlName="unidadCompraId"
+          [options]="unidadesFiltradas()"
+          optionLabel="nombre"
+          optionValue="id"
+          placeholder="Unidad"
+          appendTo="body"
+          [disabled]="!insumoSeleccionado()"
+          styleClass="w-full"
+        />
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="costo" class="text-sm font-medium">Costo total de la compra</label>
+      <p-inputnumber
+        inputId="costo"
+        formControlName="costo"
+        mode="currency"
+        currency="HNL"
+        locale="es-HN"
+        [min]="0"
+        styleClass="w-full"
+        inputStyleClass="w-full"
+      />
+    </div>
+
+    @if (vistaPrevia(); as preview) {
+      <p
+        class="rounded-lg border px-3 py-2 text-sm"
+        style="border-color: var(--surface-border)"
+      >
+        <span class="text-muted">Equivale a:</span>
+        <span class="font-medium text-primary-600">{{ preview }}</span>
+      </p>
+    }
+
+    <div class="mt-2 flex justify-end gap-2">
+      <p-button
+        type="button"
+        label="Cancelar"
+        severity="secondary"
+        [text]="true"
+        (onClick)="formVisible.set(false)"
+      />
+      <p-button
+        type="submit"
+        label="Registrar"
+        icon="pi pi-check"
+        [loading]="guardando()"
+        [disabled]="form.invalid || guardando()"
+      />
+    </div>
+  </form>
+</p-dialog>
