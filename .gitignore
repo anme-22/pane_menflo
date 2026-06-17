@@ -23,10 +23,7 @@ coverage/
 .env.*
 !.env.example
 
-# Volcados de datos grandes (NO subir a git). El censo nacional (~5M filas,
-# ~440 MB) se carga manualmente una sola vez (ver README). Las MIGRACIONES sí
-# se versionan: crean la tabla vacía; los datos vienen del volcado externo.
-censo.sql
+
 
 # Logs
 *.log
