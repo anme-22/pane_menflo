@@ -65,7 +65,8 @@ model UnidadMedida {
   tipo        TipoUnidad
   factorABase Decimal    @map("factor_a_base") @db.Decimal(18, 6)
 
-  comprasComoUnidad Compra[]
+  comprasComoUnidad      Compra[]
+  ingredientesComoUnidad RecetaIngrediente[]
 
   @@map("unidad_medida")
   @@schema("public")
@@ -82,6 +83,7 @@ model Producto {
   actualizadoEn DateTime @updatedAt @map("actualizado_en")
 
   precios PrecioProducto[]
+  receta  Receta?
 
   @@map("producto")
   @@schema("public")
@@ -134,8 +136,9 @@ model Insumo {
   creadoEn      DateTime   @default(now()) @map("creado_en")
   actualizadoEn DateTime   @updatedAt @map("actualizado_en")
 
-  compras     Compra[]
-  existencias Existencia[]
+  compras            Compra[]
+  existencias        Existencia[]
+  recetaIngredientes RecetaIngrediente[]
 
   @@map("insumo")
   @@schema("public")
@@ -182,6 +185,44 @@ model Existencia {
 
   @@unique([insumoId, sucursalId])
   @@map("existencia")
+  @@schema("public")
+}
+
+/// Receta de un producto, POR LOTE (quintal/saco). `rendimiento` = bolsas que
+/// rinde un lote (ej. 223 por quintal). `unidadLote` es una etiqueta del lote
+/// (texto: "quintal", "saco"...). Un producto tiene como mucho UNA receta y
+/// puede no tener ninguna. La migración añade CHECK rendimiento > 0.
+model Receta {
+  id            Int      @id @default(autoincrement())
+  productoId    Int      @unique @map("producto_id")
+  rendimiento   Int
+  unidadLote    String   @default("quintal") @map("unidad_lote") @db.VarChar(50)
+  creadoEn      DateTime @default(now()) @map("creado_en")
+  actualizadoEn DateTime @updatedAt @map("actualizado_en")
+
+  producto     Producto            @relation(fields: [productoId], references: [id])
+  ingredientes RecetaIngrediente[]
+
+  @@map("receta")
+  @@schema("public")
+}
+
+/// Ingrediente de una receta: insumo + cantidad en cualquier unidad (del mismo
+/// tipo que el insumo). Al costear/consumir se convierte a la unidad base.
+/// Se borra en cascada con la receta. La migración añade CHECK cantidad > 0.
+model RecetaIngrediente {
+  id       Int     @id @default(autoincrement())
+  recetaId Int     @map("receta_id")
+  insumoId Int     @map("insumo_id")
+  cantidad Decimal @db.Decimal(18, 4)
+  unidadId Int     @map("unidad_id")
+
+  receta Receta       @relation(fields: [recetaId], references: [id], onDelete: Cascade)
+  insumo Insumo       @relation(fields: [insumoId], references: [id])
+  unidad UnidadMedida @relation(fields: [unidadId], references: [id])
+
+  @@index([recetaId])
+  @@map("receta_ingrediente")
   @@schema("public")
 }
 

@@ -1,0 +1,17 @@
+import { Module } from '@nestjs/common';
+import { UnidadesModule } from '../unidades/unidades.module';
+import { SucursalesModule } from '../sucursales/sucursales.module';
+import { RecetasController } from './recetas.controller';
+import { RecetasService } from './recetas.service';
+import { CostoRecetaService } from './costo-receta.service';
+
+/**
+ * Módulo de recetas. Reutiliza ConversionService (UnidadesModule) y
+ * SucursalesService (SucursalesModule) por DI para el costeo de la receta.
+ */
+@Module({
+  imports: [UnidadesModule, SucursalesModule],
+  controllers: [RecetasController],
+  providers: [RecetasService, CostoRecetaService],
+})
+export class RecetasModule {}
