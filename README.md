@@ -4,7 +4,7 @@ Monorepo (Nx) para la gestión de una panadería: facturación, inventario,
 recetas, producción y reportes. Backend en **NestJS + Prisma**, frontend en
 **Angular + PrimeNG + Tailwind**, base de datos **PostgreSQL**.
 
-> Estado actual: **Feature 4 — Clientes y censo** (ver `CLAUDE.md §10`).
+> Estado actual: **Feature 5 — Insumos, unidades y compras** (ver `CLAUDE.md §10`).
 
 ## Stack
 
@@ -142,6 +142,26 @@ docker exec pane-postgres rm /tmp/censo.sql
 > (`--single-transaction`): si algo falla, no deja datos a medias. La app nunca
 > escribe en el censo; solo lo consulta para autocompletar.
 
+## Insumos, unidades y compras (Feature 5)
+
+- **Insumos** (materias primas): cada uno tiene un **tipo** (peso / volumen /
+  conteo) que define su **unidad base** (peso→g, volumen→ml, conteo→u). El stock
+  **siempre se guarda en unidad base**. Los insumos no se borran: se desactivan.
+- **Unidades**: se reutiliza la tabla `unidad_medida` (sembrada en F1). Convertir
+  entre unidades del mismo tipo = `cantidad * factor_origen / factor_destino`.
+  **Agregar una unidad nueva = insertar una fila** (p. ej. desde DBeaver), sin
+  tocar el código. El seed añade la unidad base de conteo (**"Unidad"**, factor 1).
+- **Compras** (lotes): se registra cantidad + unidad de compra + **costo total**;
+  el sistema convierte a unidad base y calcula el **costo por unidad base** del
+  lote. Cada compra actualiza la existencia con **costo promedio ponderado**.
+- **Roles**: insumos en lectura para todos (el vendedor consulta el inventario),
+  gestión solo admin/super_admin; **compras solo admin/super_admin**.
+- Endpoints: `GET /api/unidades`; `GET|POST /api/insumos`,
+  `PATCH /api/insumos/:id[/estado]`; `GET|POST /api/compras` (`?insumoId=` opc.).
+
+> El kardex detallado, la cobertura en días y las alertas de stock bajo llegan en
+> la Feature 8 (Inventario / existencias).
+
 ## Scripts útiles
 
 | Script                      | Qué hace                                            |
@@ -171,14 +191,18 @@ docker exec pane-postgres rm /tmp/censo.sql
 │   │       ├── auth/        # login, JWT, guards (JwtAuthGuard, RolesGuard)
 │   │       ├── usuarios/    # CRUD de usuarios (solo super_admin)
 │   │       ├── productos/   # catálogo + precios históricos
-│   │       └── clientes/    # CRUD de clientes + lookup del censo (grl)
+│   │       ├── clientes/    # CRUD de clientes + lookup del censo (grl)
+│   │       ├── unidades/    # catálogo + ConversionService (tabla)
+│   │       ├── insumos/     # materias primas + existencias
+│   │       ├── compras/     # lotes + costo promedio ponderado
+│   │       └── costeo/      # estrategia de costeo (interfaz + promedio)
 │   └── web/                 # Angular (PrimeNG + Tailwind)
 │       └── src/
 │           ├── styles.css           # variables CSS de la paleta + modo oscuro
 │           └── app/
 │               ├── core/auth/        # AuthService, interceptor y guards
 │               ├── layout/           # shell (barra + navegación por rol)
-│               ├── features/         # login, inicio, usuarios, productos, clientes
+│               ├── features/         # login, inicio, usuarios, productos, clientes, insumos, compras
 │               └── theme/            # ThemeService + preset de PrimeNG
 ├── libs/
 │   └── shared/              # tipos/DTOs compartidos (@pane/shared)

@@ -8,6 +8,10 @@ import { AuthModule } from './auth/auth.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 import { ProductosModule } from './productos/productos.module';
 import { ClientesModule } from './clientes/clientes.module';
+import { UnidadesModule } from './unidades/unidades.module';
+import { SucursalesModule } from './sucursales/sucursales.module';
+import { InsumosModule } from './insumos/insumos.module';
+import { ComprasModule } from './compras/compras.module';
 
 @Module({
   imports: [
@@ -19,6 +23,10 @@ import { ClientesModule } from './clientes/clientes.module';
     UsuariosModule,
     ProductosModule,
     ClientesModule,
+    UnidadesModule,
+    SucursalesModule,
+    InsumosModule,
+    ComprasModule,
   ],
   controllers: [AppController],
   providers: [AppService],

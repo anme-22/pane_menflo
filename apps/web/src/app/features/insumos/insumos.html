@@ -1,0 +1,148 @@
+<p-toast />
+
+<section class="mx-auto max-w-5xl">
+  <div class="mb-4 flex items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-primary-600">Insumos</h1>
+      <p class="text-sm text-muted">Materias primas, stock y costo promedio.</p>
+    </div>
+    @if (puedeGestionar()) {
+      <p-button label="Nuevo insumo" icon="pi pi-plus" (onClick)="abrirNuevo()" />
+    }
+  </div>
+
+  <div
+    class="overflow-hidden rounded-xl border"
+    style="background-color: var(--surface-card); border-color: var(--surface-border)"
+  >
+    <p-table
+      [value]="insumos()"
+      [loading]="cargando()"
+      [paginator]="insumos().length > 10"
+      [rows]="10"
+      responsiveLayout="stack"
+      [breakpoint]="'640px'"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Nombre</th>
+          <th>Tipo</th>
+          <th>Stock</th>
+          <th>Costo prom.</th>
+          <th>Estado</th>
+          <th class="text-right">Acciones</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-i>
+        <tr>
+          <td><span class="p-column-title font-medium sm:hidden">Nombre </span>{{ i.nombre }}</td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Tipo </span>{{ tipoTexto(i.tipo) }}
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Stock </span>
+            <span class="font-medium">{{ stockTexto(i) }}</span>
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Costo prom. </span>
+            <span class="text-muted">{{ costoTexto(i) }}</span>
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Estado </span>
+            <p-tag
+              [value]="i.activo ? 'Activo' : 'Inactivo'"
+              [severity]="i.activo ? 'success' : 'secondary'"
+            />
+          </td>
+          <td class="text-right whitespace-nowrap">
+            @if (puedeGestionar()) {
+              <p-button
+                icon="pi pi-pencil"
+                severity="secondary"
+                [text]="true"
+                [rounded]="true"
+                ariaLabel="Editar"
+                (onClick)="abrirEdicion(i)"
+              />
+              <p-button
+                [icon]="i.activo ? 'pi pi-ban' : 'pi pi-check'"
+                [severity]="i.activo ? 'danger' : 'success'"
+                [text]="true"
+                [rounded]="true"
+                [ariaLabel]="i.activo ? 'Desactivar' : 'Activar'"
+                (onClick)="alternarEstado(i)"
+              />
+            } @else {
+              <span class="text-muted">—</span>
+            }
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="6" class="p-4 text-center text-muted">
+            No hay insumos todavía.
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</section>
+
+<!-- Diálogo crear / editar insumo -->
+<p-dialog
+  [visible]="formVisible()"
+  (visibleChange)="formVisible.set($event)"
+  [modal]="true"
+  [style]="{ width: '28rem' }"
+  [header]="editandoId() === null ? 'Nuevo insumo' : 'Editar insumo'"
+  [dismissableMask]="true"
+>
+  <form [formGroup]="form" (ngSubmit)="guardar()" class="flex flex-col gap-4 pt-2">
+    <div class="flex flex-col gap-1">
+      <label for="nombre" class="text-sm font-medium">Nombre</label>
+      <input pInputText id="nombre" formControlName="nombre" class="w-full" />
+      @if (form.controls.nombre.touched && form.controls.nombre.invalid) {
+        <small class="text-red-500">El nombre es obligatorio.</small>
+      }
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="tipo" class="text-sm font-medium">Tipo</label>
+      <p-select
+        inputId="tipo"
+        formControlName="tipo"
+        [options]="opcionesTipo"
+        optionLabel="label"
+        optionValue="value"
+        styleClass="w-full"
+      />
+      @if (editandoId() === null) {
+        <small class="text-muted">
+          Define la unidad base (peso→g, volumen→ml, conteo→u) y no se cambia después.
+        </small>
+      } @else {
+        <small class="text-muted">El tipo no se modifica tras crear el insumo.</small>
+      }
+    </div>
+
+    <div class="mt-2 flex justify-end gap-2">
+      <p-button
+        type="button"
+        label="Cancelar"
+        severity="secondary"
+        [text]="true"
+        (onClick)="formVisible.set(false)"
+      />
+      <p-button
+        type="submit"
+        label="Guardar"
+        icon="pi pi-check"
+        [loading]="guardando()"
+        [disabled]="form.invalid || guardando()"
+      />
+    </div>
+  </form>
+</p-dialog>

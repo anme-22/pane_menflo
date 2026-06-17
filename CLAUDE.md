@@ -430,7 +430,36 @@ ocultamiento de UI por rol en Angular.
       no-encontrado, crear desde censo, 409 duplicado, 400 identidad inválida,
       401 sin token] y UI desktop/móvil [autocompletado + tarjetas]; tests
       api[15: +4 censo] + web[7: +2 clientes] verdes. `censo.sql` en .gitignore.)
-- [ ] Feature 5 — Insumos, unidades y compras
+- [x] Feature 5 — Insumos, unidades y compras
+      (Reutiliza `unidad_medida` de F1; se sembró la base de conteo que faltaba
+      ["Unidad", factor 1]. Prisma: `insumo` [tipo define la unidad base; no se
+      borra, se desactiva], `compra` [lote: cantidad+unidadCompra+costo TOTAL,
+      con cantidadBase y costoPorUnidadBase calculados] y `existencia` [saldo en
+      unidad base + costoPromedio por sucursal, único (insumo,sucursal)]; compra
+      y existencia llevan `sucursalId` NOT NULL = sucursal por defecto. Migración
+      versionada. [Drift del índice del censo RESUELTO: el modelo declara el
+      índice de nombre como btree simple [sin `ops: raw(...)`]; Prisma no rastrea
+      operator classes vía raw y los re-proponía en cada migrate dev, pero trata
+      btree-simple y text_pattern_ops como equivalentes al comparar, así que ya
+      no hay drift y el índice real con prefijo [creado en clientes_censo] queda
+      intacto.]
+      Backend: ConversionService basado en la TABLA [cantidad*factor_origen/
+      factor_destino, valida mismo tipo] + GET /unidades; EstrategiaCosteo
+      [interfaz + token ESTRATEGIA_COSTEO] con CostoPromedioPonderadoStrategy
+      inyectada por DI [abierto/cerrado]; SucursalesService [resuelve la default];
+      módulos insumos [lectura todos, gestión admin/super_admin] y compras [solo
+      admin/super_admin]: al registrar una compra convierte a base, calcula costo/
+      unidad base y actualiza la existencia [promedio ponderado] en transacción.
+      El tipo del insumo es fijo tras crearse. libs/shared: InsumoDto [con
+      existencia], CompraDto, DTOs y helpers de sexo/tipo [ABREVIATURA_BASE,
+      TIPO_LABEL]. Web: /insumos en NAV_ITEMS [todos] y /compras [admin/
+      super_admin], listados tabla→tarjetas; alta de insumo [tipo bloqueado al
+      editar] y registro de compra [unidad filtrada por tipo del insumo, costo
+      por unidad base en vivo, Guardar deshabilitado si inválido]. Verificado
+      contra BD [conversión 2qq=90718.4g, costo/u base 6000/90718.4, promedio
+      ponderado 10000/136077.6, rechazo de tipo distinto 400, 401 sin token,
+      vendedor 403 en compras / 200 en insumos] y UI desktop/móvil; tests
+      api[+9: conversión, promedio, compra] + web[+4: insumos, compras] verdes.)
 - [ ] Feature 6 — Recetas
 - [ ] Feature 7 — Producción
 - [ ] Feature 8 — Inventario / existencias
