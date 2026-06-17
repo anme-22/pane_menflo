@@ -408,7 +408,28 @@ ocultamiento de UI por rol en Angular.
       precio [p-inputnumber HNL], drawer de historial; vendedor en consulta
       [oculto el CRUD]. Verificado contra BD [regla de vigencia, 400 si precio<=0]
       y UI desktop/móvil; tests api[7]+web[5] verdes.)
-- [ ] Feature 4 — Clientes + censo
+- [x] Feature 4 — Clientes + censo
+      (Prisma: multiSchema [public + grl]. Tabla `cliente` [identidad CHAR(13)
+      como PK natural, nombre, apellido, telefono?, sexo int, activo, timestamps;
+      no se borra, se desactiva] y mapeo de `grl.censo_nacional` [SOLO LECTURA,
+      DDL del documento] con índice de nombre btree `text_pattern_ops`
+      [primer_apellido, primer_nombre] para búsqueda por prefijo; migración
+      versionada crea la tabla vacía, los ~5M datos se cargan aparte [ver README].
+      API: ClientesModule con ClientesService [CRUD sin borrado, identidad única]
+      y CensoService [lookup solo-lectura que compone nombre/apellido y devuelve
+      el código de sexo sin romper ante 0/9/desconocidos]; controlador delgado,
+      todo exige sesión y los TRES roles gestionan clientes [solo JwtAuthGuard].
+      Endpoints GET|POST /clientes, PATCH /:identidad[/estado] y lookup
+      GET /clientes/censo/:identidad. libs/shared: ClienteDto, CensoLookupDto/
+      Response, Crear/Actualizar DTOs, catálogo de sexo [SEXO_*, etiquetaSexo,
+      OPCIONES_SEXO]. Web: ruta /clientes en NAV_ITEMS [visible a todos], listado
+      tabla→tarjetas en móvil, diálogo crear/editar con autocompletado del censo
+      [debounce + switchMap al teclear 13 dígitos; rellena nombre/apellido/sexo
+      editables; normaliza sexo fuera de {1,2} a No especificado], activar/
+      desactivar. Verificado contra BD [lookup compone bien, tolera sexo 9/nulos,
+      no-encontrado, crear desde censo, 409 duplicado, 400 identidad inválida,
+      401 sin token] y UI desktop/móvil [autocompletado + tarjetas]; tests
+      api[15: +4 censo] + web[7: +2 clientes] verdes. `censo.sql` en .gitignore.)
 - [ ] Feature 5 — Insumos, unidades y compras
 - [ ] Feature 6 — Recetas
 - [ ] Feature 7 — Producción

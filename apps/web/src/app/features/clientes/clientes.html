@@ -1,0 +1,185 @@
+<p-toast />
+
+<section class="mx-auto max-w-5xl">
+  <div class="mb-4 flex items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-primary-600">Clientes</h1>
+      <p class="text-sm text-muted">Registro de clientes (autocompletado por censo).</p>
+    </div>
+    <p-button label="Nuevo cliente" icon="pi pi-plus" (onClick)="abrirNuevo()" />
+  </div>
+
+  <div
+    class="overflow-hidden rounded-xl border"
+    style="background-color: var(--surface-card); border-color: var(--surface-border)"
+  >
+    <p-table
+      [value]="clientes()"
+      [loading]="cargando()"
+      [paginator]="clientes().length > 10"
+      [rows]="10"
+      responsiveLayout="stack"
+      [breakpoint]="'640px'"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Identidad</th>
+          <th>Nombre</th>
+          <th>Apellido</th>
+          <th>Teléfono</th>
+          <th>Sexo</th>
+          <th>Estado</th>
+          <th class="text-right">Acciones</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-c>
+        <tr>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Identidad </span>
+            <span class="font-mono">{{ c.identidad }}</span>
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Nombre </span>{{ c.nombre }}
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Apellido </span>{{ c.apellido }}
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Teléfono </span>
+            <span class="text-muted">{{ c.telefono || '—' }}</span>
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Sexo </span>{{ sexoTexto(c.sexo) }}
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Estado </span>
+            <p-tag
+              [value]="c.activo ? 'Activo' : 'Inactivo'"
+              [severity]="c.activo ? 'success' : 'secondary'"
+            />
+          </td>
+          <td class="text-right whitespace-nowrap">
+            <p-button
+              icon="pi pi-pencil"
+              severity="secondary"
+              [text]="true"
+              [rounded]="true"
+              ariaLabel="Editar"
+              (onClick)="abrirEdicion(c)"
+            />
+            <p-button
+              [icon]="c.activo ? 'pi pi-ban' : 'pi pi-check'"
+              [severity]="c.activo ? 'danger' : 'success'"
+              [text]="true"
+              [rounded]="true"
+              [ariaLabel]="c.activo ? 'Desactivar' : 'Activar'"
+              (onClick)="alternarEstado(c)"
+            />
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="7" class="p-4 text-center text-muted">
+            No hay clientes todavía.
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</section>
+
+<!-- Diálogo crear / editar cliente -->
+<p-dialog
+  [visible]="formVisible()"
+  (visibleChange)="formVisible.set($event)"
+  [modal]="true"
+  [style]="{ width: '30rem' }"
+  [header]="editandoId() === null ? 'Nuevo cliente' : 'Editar cliente'"
+  [dismissableMask]="true"
+>
+  <form [formGroup]="form" (ngSubmit)="guardar()" class="flex flex-col gap-4 pt-2">
+    <div class="flex flex-col gap-1">
+      <label for="identidad" class="text-sm font-medium">Identidad</label>
+      <input
+        pInputText
+        appSoloDigitos
+        id="identidad"
+        formControlName="identidad"
+        inputmode="numeric"
+        maxlength="13"
+        placeholder="13 dígitos"
+        class="w-full font-mono"
+      />
+      @if (form.controls.identidad.touched && form.controls.identidad.invalid) {
+        <small class="text-red-500">La identidad debe tener 13 dígitos.</small>
+      }
+      @switch (censoEstado()) {
+        @case ('buscando') {
+          <small class="text-muted">Buscando en el censo…</small>
+        }
+        @case ('encontrado') {
+          <small class="text-primary-600">
+            <i class="pi pi-check-circle"></i> Datos encontrados
+          </small>
+        }
+        @case ('no-encontrado') {
+          <small class="text-muted">Completa los datos manualmente</small>
+        }
+      }
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="nombre" class="text-sm font-medium">Nombre</label>
+      <input pInputText id="nombre" formControlName="nombre" class="w-full" />
+      @if (form.controls.nombre.touched && form.controls.nombre.invalid) {
+        <small class="text-red-500">El nombre es obligatorio.</small>
+      }
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="apellido" class="text-sm font-medium">Apellido</label>
+      <input pInputText id="apellido" formControlName="apellido" class="w-full" />
+      @if (form.controls.apellido.touched && form.controls.apellido.invalid) {
+        <small class="text-red-500">El apellido es obligatorio.</small>
+      }
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div class="flex flex-col gap-1">
+        <label for="telefono" class="text-sm font-medium">Teléfono</label>
+        <input pInputText id="telefono" formControlName="telefono" class="w-full" />
+      </div>
+      <div class="flex flex-col gap-1">
+        <label for="sexo" class="text-sm font-medium">Sexo</label>
+        <p-select
+          inputId="sexo"
+          formControlName="sexo"
+          [options]="opcionesSexo"
+          optionLabel="label"
+          optionValue="value"
+          styleClass="w-full"
+        />
+      </div>
+    </div>
+
+    <div class="mt-2 flex justify-end gap-2">
+      <p-button
+        type="button"
+        label="Cancelar"
+        severity="secondary"
+        [text]="true"
+        (onClick)="formVisible.set(false)"
+      />
+      <p-button
+        type="submit"
+        label="Guardar"
+        icon="pi pi-check"
+        [loading]="guardando()"
+        [disabled]="form.invalid || guardando()"
+      />
+    </div>
+  </form>
+</p-dialog>

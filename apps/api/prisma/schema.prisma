@@ -1,6 +1,7 @@
 // Esquema de Prisma — Sistema de Panadería
 // Dominio y nombres de tablas/columnas en español (snake_case en la BD).
-// Feature 1: solo unidad_medida (con su enum) y sucursal (una por defecto).
+// La app vive en el esquema `public`; el censo nacional (solo lectura) vive en
+// el esquema `grl` (multiSchema). Cada modelo/enum declara su esquema.
 
 generator client {
   provider = "prisma-client-js"
@@ -9,6 +10,8 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  // multiSchema: la app en `public`, el censo nacional en `grl`.
+  schemas  = ["public", "grl"]
 }
 
 /// Tipo (categoría) de una unidad de medida. Cada tipo tiene una unidad base:
@@ -17,6 +20,8 @@ enum TipoUnidad {
   peso
   volumen
   conteo
+
+  @@schema("public")
 }
 
 /// Roles del sistema (ver CLAUDE.md §7).
@@ -27,6 +32,8 @@ enum RolUsuario {
   super_admin
   admin
   vendedor
+
+  @@schema("public")
 }
 
 /// Usuarios del sistema. Nunca se borran: se desactivan (`activo = false`)
@@ -43,6 +50,7 @@ model Usuario {
   actualizadoEn DateTime   @updatedAt @map("actualizado_en")
 
   @@map("usuario")
+  @@schema("public")
 }
 
 /// Catálogo de unidades de medida.
@@ -58,6 +66,7 @@ model UnidadMedida {
   factorABase Decimal    @map("factor_a_base") @db.Decimal(18, 6)
 
   @@map("unidad_medida")
+  @@schema("public")
 }
 
 /// Producto del catálogo. NO se borra: se desactiva (`activo = false`).
@@ -73,6 +82,7 @@ model Producto {
   precios PrecioProducto[]
 
   @@map("producto")
+  @@schema("public")
 }
 
 /// Historial de precios de un producto. El precio ACTUAL es el de
@@ -91,6 +101,7 @@ model PrecioProducto {
 
   @@index([productoId])
   @@map("precio_producto")
+  @@schema("public")
 }
 
 /// Sucursales del negocio. Esqueleto para esta etapa: se siembra una por
@@ -104,4 +115,43 @@ model Sucursal {
   creadaEn  DateTime @default(now()) @map("creada_en")
 
   @@map("sucursal")
+  @@schema("public")
+}
+
+/// Cliente de la panadería (Feature 4). La `identidad` (13 chars) es la clave
+/// natural. NO se borra: se desactiva (`activo = false`). El `sexo` guarda el
+/// código del catálogo (1 = Masculino, 2 = Femenino; otros = no especificado),
+/// tolerando códigos como 0/9 sin romper nada.
+model Cliente {
+  identidad     String   @id @db.Char(13)
+  nombre        String   @db.VarChar(101)
+  apellido      String   @db.VarChar(101)
+  telefono      String?  @db.VarChar(20)
+  sexo          Int      @default(0)
+  activo        Boolean  @default(true)
+  creadoEn      DateTime @default(now()) @map("creado_en")
+  actualizadoEn DateTime @updatedAt @map("actualizado_en")
+
+  @@map("cliente")
+  @@schema("public")
+}
+
+/// Censo nacional (esquema `grl`). SOLO LECTURA: la app NUNCA escribe aquí; se
+/// usa para autocompletar nombres y sexo del cliente a partir de la identidad.
+/// Los ~5M registros se cargan UNA vez desde un volcado externo (ver README),
+/// no por Prisma; la migración solo crea la tabla, la PK y el índice de nombre.
+/// El índice usa `text_pattern_ops` para soportar búsqueda por prefijo (LIKE
+/// 'APELLIDO%') aunque la BD no use la colación "C".
+model CensoNacional {
+  identidad       String    @id @db.Char(13)
+  primerNombre    String    @map("primer_nombre") @db.VarChar(50)
+  segundoNombre   String?   @map("segundo_nombre") @db.VarChar(50)
+  primerApellido  String    @map("primer_apellido") @db.VarChar(50)
+  segundoApellido String?   @map("segundo_apellido") @db.VarChar(50)
+  codSexo         Int       @map("cod_sexo")
+  fechaNacimiento DateTime? @map("fecha_nacimiento") @db.Date
+
+  @@index([primerApellido(ops: raw("text_pattern_ops")), primerNombre(ops: raw("text_pattern_ops"))], map: "censo_nacional_nombre_idx")
+  @@map("censo_nacional")
+  @@schema("grl")
 }

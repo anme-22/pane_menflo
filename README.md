@@ -4,7 +4,7 @@ Monorepo (Nx) para la gestión de una panadería: facturación, inventario,
 recetas, producción y reportes. Backend en **NestJS + Prisma**, frontend en
 **Angular + PrimeNG + Tailwind**, base de datos **PostgreSQL**.
 
-> Estado actual: **Feature 2 — Auth y usuarios** (ver `CLAUDE.md §10`).
+> Estado actual: **Feature 4 — Clientes y censo** (ver `CLAUDE.md §10`).
 
 ## Stack
 
@@ -107,6 +107,41 @@ pnpm nx serve web
   `Authorization: Bearer <token>`; sin token responden `401` y con rol
   insuficiente `403`.
 
+## Clientes y censo (Feature 4)
+
+- Pantalla **Clientes**: la gestionan los **tres roles** (incluido vendedor).
+  Al crear un cliente, escribir la **identidad** (13 dígitos) autocompleta
+  nombre, apellido y sexo desde el **censo nacional** (editables).
+- Catálogo de sexo: **1 = Masculino, 2 = Femenino**; otros códigos (p. ej. 0/9)
+  se muestran como **No especificado** (no rompen el autocompletado).
+- Los clientes **no se borran**: se desactivan (`activo = false`).
+- Endpoints: `GET|POST /api/clientes`, `PATCH /api/clientes/:identidad`,
+  `PATCH /api/clientes/:identidad/estado` y el lookup
+  `GET /api/clientes/censo/:identidad`. Todo exige sesión (`Bearer <token>`).
+
+### Cargar el censo nacional (una sola vez)
+
+El censo (`grl.censo_nacional`) es una tabla de **solo lectura** con ~5M filas.
+La **migración crea la tabla vacía**; los datos vienen de un volcado externo
+(`censo.sql`, ~440 MB, **ignorado por git**) que se carga manualmente:
+
+```bash
+# La tabla ya existe tras aplicar migraciones (pnpm prisma:migrate / :deploy).
+# Coloca censo.sql en la raíz del repo y cárgalo dentro del contenedor:
+docker cp censo.sql pane-postgres:/tmp/censo.sql
+docker exec pane-postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 --single-transaction -f /tmp/censo.sql'
+
+# Verificar el conteo (debería rondar los ~5 millones):
+docker exec pane-postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT count(*) FROM grl.censo_nacional;"'
+
+# (Opcional) borrar el volcado dentro del contenedor:
+docker exec pane-postgres rm /tmp/censo.sql
+```
+
+> La carga puede tardar varios minutos. Va en **una sola transacción**
+> (`--single-transaction`): si algo falla, no deja datos a medias. La app nunca
+> escribe en el censo; solo lo consulta para autocompletar.
+
 ## Scripts útiles
 
 | Script                      | Qué hace                                            |
@@ -134,14 +169,16 @@ pnpm nx serve web
 │   │       ├── prisma/      # PrismaService + PrismaModule (global)
 │   │       ├── health/      # GET /health
 │   │       ├── auth/        # login, JWT, guards (JwtAuthGuard, RolesGuard)
-│   │       └── usuarios/    # CRUD de usuarios (solo super_admin)
+│   │       ├── usuarios/    # CRUD de usuarios (solo super_admin)
+│   │       ├── productos/   # catálogo + precios históricos
+│   │       └── clientes/    # CRUD de clientes + lookup del censo (grl)
 │   └── web/                 # Angular (PrimeNG + Tailwind)
 │       └── src/
 │           ├── styles.css           # variables CSS de la paleta + modo oscuro
 │           └── app/
 │               ├── core/auth/        # AuthService, interceptor y guards
 │               ├── layout/           # shell (barra + navegación por rol)
-│               ├── features/         # login, inicio, usuarios
+│               ├── features/         # login, inicio, usuarios, productos, clientes
 │               └── theme/            # ThemeService + preset de PrimeNG
 ├── libs/
 │   └── shared/              # tipos/DTOs compartidos (@pane/shared)

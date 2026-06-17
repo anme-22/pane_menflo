@@ -164,7 +164,13 @@
         [text]="true"
         (onClick)="formVisible.set(false)"
       />
-      <p-button type="submit" label="Guardar" icon="pi pi-check" [loading]="guardando()" />
+      <p-button
+        type="submit"
+        label="Guardar"
+        icon="pi pi-check"
+        [loading]="guardando()"
+        [disabled]="form.invalid || guardando()"
+      />
     </div>
   </form>
 </p-dialog>
@@ -212,7 +218,13 @@
           [text]="true"
           (onClick)="precioVisible.set(false)"
         />
-        <p-button type="submit" label="Guardar precio" icon="pi pi-check" [loading]="guardando()" />
+        <p-button
+          type="submit"
+          label="Guardar precio"
+          icon="pi pi-check"
+          [loading]="guardando()"
+          [disabled]="formPrecio.invalid || guardando()"
+        />
       </div>
     </form>
   }
