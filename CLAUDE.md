@@ -392,7 +392,22 @@ ocultamiento de UI por rol en Angular.
       /api en dev. Variables nuevas en .env(.example): JWT_SECRET,
       JWT_EXPIRES_IN, SUPERADMIN_EMAIL/PASSWORD/NOMBRE. Verificado: login OK,
       401 sin token, 403 por rol, vendedor no ve Usuarios; tests api+web verdes.)
-- [ ] Feature 3 — Productos + precios históricos
+- [x] Feature 3 — Productos + precios históricos
+      (Prisma: tabla `producto` [nombre, descripcion?, activo, timestamps; no se
+      borra, se desactiva] y `precio_producto` [precio Decimal(12,2),
+      vigente_desde, vigente_hasta?]; el precio vigente es el de
+      vigente_hasta=NULL. Migración con índice ÚNICO PARCIAL [un solo vigente por
+      producto] y CHECK precio>0. API: ProductosModule con ProductosService +
+      PreciosService [regla cerrar-anterior/abrir-nuevo en transacción, sin if
+      gigantes, reutilizada al crear]; precio inicial OBLIGATORIO al crear;
+      endpoints GET /productos[:id][/precios], POST/PATCH y POST /:id/precio;
+      lectura para cualquier rol, gestión solo admin/super_admin. libs/shared:
+      ProductoDto [con precioVigente], PrecioDto, DTOs crear/actualizar/cambiar
+      precio [importes como string]. Web: ruta /productos en NAV_ITEMS [visible a
+      todos], listado tabla→tarjetas en móvil, diálogos crear/editar y cambiar
+      precio [p-inputnumber HNL], drawer de historial; vendedor en consulta
+      [oculto el CRUD]. Verificado contra BD [regla de vigencia, 400 si precio<=0]
+      y UI desktop/móvil; tests api[7]+web[5] verdes.)
 - [ ] Feature 4 — Clientes + censo
 - [ ] Feature 5 — Insumos, unidades y compras
 - [ ] Feature 6 — Recetas
