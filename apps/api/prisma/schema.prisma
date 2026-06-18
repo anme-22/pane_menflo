@@ -24,6 +24,30 @@ enum TipoUnidad {
   @@schema("public")
 }
 
+/// Estado de una orden de producción (Feature 7).
+/// BORRADOR: se planifica y edita libre. CONFIRMADA: ya descontó insumos del
+/// inventario y "congeló" su costo del momento (no vuelve a descontar). ANULADA:
+/// se anula con motivo dejando rastro (no se borra). Coherente con "no borrar
+/// registros de negocio".
+enum EstadoProduccion {
+  BORRADOR
+  CONFIRMADA
+  ANULADA
+
+  @@schema("public")
+}
+
+/// Tipo de movimiento de inventario (Feature 7). Hoy se usa SALIDA (consumo de
+/// producción). ENTRADA (compras) y AJUSTE quedan reservados para el kardex de
+/// la Feature 8; no se generan todavía.
+enum TipoMovimiento {
+  ENTRADA
+  SALIDA
+  AJUSTE
+
+  @@schema("public")
+}
+
 /// Roles del sistema (ver CLAUDE.md §7).
 /// - super_admin: crea/gestiona usuarios; acceso total.
 /// - admin: gestiona el negocio (no necesariamente usuarios).
@@ -84,6 +108,7 @@ model Producto {
 
   precios PrecioProducto[]
   receta  Receta?
+  ordenes OrdenProduccion[]
 
   @@map("producto")
   @@schema("public")
@@ -120,6 +145,8 @@ model Sucursal {
 
   compras     Compra[]
   existencias Existencia[]
+  ordenes     OrdenProduccion[]
+  movimientos MovimientoInventario[]
 
   @@map("sucursal")
   @@schema("public")
@@ -139,6 +166,7 @@ model Insumo {
   compras            Compra[]
   existencias        Existencia[]
   recetaIngredientes RecetaIngrediente[]
+  movimientos        MovimientoInventario[]
 
   @@map("insumo")
   @@schema("public")
@@ -202,6 +230,7 @@ model Receta {
 
   producto     Producto            @relation(fields: [productoId], references: [id])
   ingredientes RecetaIngrediente[]
+  ordenes      OrdenProduccion[]
 
   @@map("receta")
   @@schema("public")
@@ -223,6 +252,68 @@ model RecetaIngrediente {
 
   @@index([recetaId])
   @@map("receta_ingrediente")
+  @@schema("public")
+}
+
+/// Orden de producción (Feature 7). Planifica producir `sacos` lotes de un
+/// producto que tiene receta. `bolsasEsperadas` se congela al crear
+/// (= sacos × rendimiento de la receta). `bolsasReales` se captura DESPUÉS de
+/// producir (para medir mermas; merma = esperadas − reales, calculada). Al
+/// CONFIRMAR (en una transacción) se descuentan los insumos del inventario, se
+/// registra un MovimientoInventario de salida por insumo y se "congela"
+/// `costoDelMomento` (insumos valorados al costo promedio vigente). La
+/// confirmación es idempotente: una orden CONFIRMADA no vuelve a descontar.
+/// Lleva `sucursalId` (sucursal por defecto; sin selector aún).
+model OrdenProduccion {
+  id              Int              @id @default(autoincrement())
+  fecha           DateTime         @default(now())
+  productoId      Int              @map("producto_id")
+  recetaId        Int              @map("receta_id")
+  sucursalId      Int              @map("sucursal_id")
+  sacos           Decimal          @db.Decimal(12, 2)
+  bolsasEsperadas Int              @map("bolsas_esperadas")
+  bolsasReales    Int?             @map("bolsas_reales")
+  costoDelMomento Decimal          @default(0) @map("costo_del_momento") @db.Decimal(12, 2)
+  estado          EstadoProduccion @default(BORRADOR)
+  motivoAnulacion String?          @map("motivo_anulacion") @db.VarChar(300)
+  confirmadaEn    DateTime?        @map("confirmada_en")
+  creadoEn        DateTime         @default(now()) @map("creado_en")
+  actualizadoEn   DateTime         @updatedAt @map("actualizado_en")
+
+  producto    Producto               @relation(fields: [productoId], references: [id])
+  receta      Receta                 @relation(fields: [recetaId], references: [id])
+  sucursal    Sucursal               @relation(fields: [sucursalId], references: [id])
+  movimientos MovimientoInventario[]
+
+  @@index([productoId])
+  @@index([estado])
+  @@map("orden_produccion")
+  @@schema("public")
+}
+
+/// Movimiento de inventario (Feature 7). Asiento inmutable del kardex: NUNCA se
+/// borra. Hoy solo se generan SALIDAs al confirmar producción (origen =
+/// `ordenProduccionId`). `cantidadBase` es la magnitud consumida en unidad base
+/// y `costoUnitario` el costo promedio vigente al momento del movimiento.
+/// ENTRADA (compras) y AJUSTE se sumarán en la Feature 8 (kardex/cobertura).
+model MovimientoInventario {
+  id                Int            @id @default(autoincrement())
+  insumoId          Int            @map("insumo_id")
+  sucursalId        Int            @map("sucursal_id")
+  tipo              TipoMovimiento
+  cantidadBase      Decimal        @map("cantidad_base") @db.Decimal(18, 4)
+  costoUnitario     Decimal        @map("costo_unitario") @db.Decimal(18, 6)
+  ordenProduccionId Int?           @map("orden_produccion_id")
+  fecha             DateTime       @default(now())
+  creadoEn          DateTime       @default(now()) @map("creado_en")
+
+  insumo          Insumo           @relation(fields: [insumoId], references: [id])
+  sucursal        Sucursal         @relation(fields: [sucursalId], references: [id])
+  ordenProduccion OrdenProduccion? @relation(fields: [ordenProduccionId], references: [id])
+
+  @@index([insumoId, sucursalId])
+  @@index([ordenProduccionId])
+  @@map("movimiento_inventario")
   @@schema("public")
 }
 

@@ -20,9 +20,30 @@ export interface EntradaCosteo {
   costoTotal: number;
 }
 
-/** Estrategia que, dado el saldo y una entrada, calcula el nuevo saldo/costo. */
+/** Salida de inventario (consumo, p. ej. de una producción). */
+export interface SalidaCosteo {
+  /** Cantidad que sale, en unidad base. */
+  cantidadBase: number;
+}
+
+/** Resultado de valorar una salida: a qué costo sale y cómo queda el saldo. */
+export interface ResultadoSalida {
+  /** Costo unitario aplicado a la salida (en promedio ponderado, el promedio). */
+  costoUnitario: number;
+  /** Costo total de la salida (= cantidadBase × costoUnitario). */
+  costo: number;
+  /** Saldo resultante tras la salida. */
+  saldo: SaldoCosteo;
+}
+
+/**
+ * Estrategia de costeo de inventario. Sabe cómo afecta una ENTRADA al saldo/
+ * costo y cómo valorar una SALIDA. Una variación futura (FIFO/LIFO) implementa
+ * esta misma interfaz sin tocar a quien la usa (ComprasService, InventarioService).
+ */
 export interface EstrategiaCosteo {
   aplicarEntrada(saldo: SaldoCosteo, entrada: EntradaCosteo): SaldoCosteo;
+  valorarSalida(saldo: SaldoCosteo, salida: SalidaCosteo): ResultadoSalida;
 }
 
 /** Token de DI para inyectar la estrategia de costeo. */

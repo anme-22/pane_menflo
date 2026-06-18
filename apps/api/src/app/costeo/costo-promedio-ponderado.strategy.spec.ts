@@ -31,4 +31,16 @@ describe('CostoPromedioPonderadoStrategy', () => {
     );
     expect(r.costoPromedio).toBeCloseTo(6000 / 90718.4, 6);
   });
+
+  it('valorar salida: usa el promedio vigente y NO cambia el promedio', () => {
+    // Saldo: 1000 u a costo 2. Sale 300 u -> costo 600; promedio sigue en 2.
+    const r = estrategia.valorarSalida(
+      { cantidadBase: 1000, costoPromedio: 2 },
+      { cantidadBase: 300 },
+    );
+    expect(r.costoUnitario).toBeCloseTo(2, 6);
+    expect(r.costo).toBeCloseTo(600, 6);
+    expect(r.saldo.cantidadBase).toBeCloseTo(700, 6);
+    expect(r.saldo.costoPromedio).toBeCloseTo(2, 6); // el promedio se conserva
+  });
 });
