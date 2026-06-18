@@ -483,7 +483,43 @@ ocultamiento de UI por rol en Angular.
       receta duplicada, 400 unidad de otro tipo, 401 sin token, borrado en
       cascada] y UI desktop [alta con costo en vivo, receta en lista]; tests
       api[+2: costo receta y costo/bolsa] + web[+3: recetas service] verdes.)
-- [ ] Feature 7 — Producción
+- [x] Feature 7 — Producción
+      (Depende de F6 recetas y F5 inventario/conversión. Prisma: `orden_produccion`
+      [fecha, productoId, recetaId, sacos Decimal(12,2), bolsasEsperadas Int
+      congelada = round(sacos×rendimiento), bolsasReales Int? capturado aparte,
+      costoDelMomento Decimal(12,2) congelado al confirmar, estado enum
+      EstadoProduccion BORRADOR→CONFIRMADA/ANULADA, motivoAnulacion?, confirmadaEn?,
+      sucursalId NOT NULL default] y `movimiento_inventario` [INMUTABLE, base del
+      kardex de F8: insumoId, sucursalId, tipo enum TipoMovimiento {ENTRADA, SALIDA,
+      AJUSTE — hoy solo SALIDA}, cantidadBase Decimal(18,4), costoUnitario
+      Decimal(18,6), ordenProduccionId? como origen, fecha]; migración versionada
+      con CHECK sacos>0, bolsas no-neg y cantidad_base>0. Backend (SOLID): se
+      extrajo `CosteoModule` que provee la estrategia por token [reusado por compras
+      e inventario, sin provider duplicado] y se amplió la interfaz EstrategiaCosteo
+      con `valorarSalida` [abierto/cerrado: en promedio ponderado la salida se valora
+      al promedio vigente y el promedio NO cambia]. `InventarioService` [SOLID-S;
+      DI] descuenta stock y asienta el movimiento de salida DENTRO de la transacción
+      del llamador. `ProduccionService`: crear [exige receta; congela bolsasEsperadas],
+      confirmar [en UNA transacción: agrega consumo por insumo = cantidad×sacos→base
+      via ConversionService de F5, descuenta y asienta un movimiento por insumo,
+      congela costoDelMomento = Σ; IDEMPOTENTE: orden CONFIRMADA no re-descuenta;
+      rollback total si falta stock→400], capturarBolsasReales [merma = esperadas−
+      reales, calculada], anular [motivo obligatorio; deja rastro]. Endpoints
+      GET /produccion[/:id], POST, POST /:id/confirmar, PATCH /:id/bolsas-reales,
+      POST /:id/anular; solo admin/super_admin. NOTA: anular registra el motivo pero
+      NO revierte el inventario de una orden ya confirmada [la reversión via AJUSTE
+      queda para el kardex de F8]. libs/shared: OrdenProduccionDto/ResumenDto,
+      ConsumoOrdenDto, enums + DTOs crear/confirmar/bolsas-reales/anular. Web:
+      /produccion en NAV_ITEMS [admin/super_admin], listado tabla→tarjetas con Tag de
+      estado, alta con bolsas esperadas EN VIVO [zoneless: toSignal(valueChanges)+
+      computed], confirmar [p-confirmDialog], capturar reales, anular con motivo y
+      diálogo de detalle con los consumos. Verificado contra BD [e2e 26/26: esperadas
+      1×200=200, confirma y baja stock 90718.4→45359.2 g, 1 movimiento SALIDA por
+      insumo con origen=orden, costoDelMomento≈3000, doble confirmación NO descuenta
+      de más, merma 200−195=5, producto sin receta 400, stock insuficiente 400 con
+      rollback, anular con/sin motivo, 401 sin token, movimientos NO se borran] y UI
+      [alta con 400 en vivo, orden en lista]; tests api[+4: valorarSalida, salida de
+      inventario, crear/idempotencia] + web[+4: produccion service] verdes.)
 - [ ] Feature 8 — Inventario / existencias
 - [ ] Feature 9 — Facturación
 - [ ] Feature 10 — Reportes y ganancias

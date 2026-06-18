@@ -1,0 +1,340 @@
+<p-toast />
+<p-confirmDialog />
+
+<section class="mx-auto max-w-6xl">
+  <div class="mb-4 flex items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-primary-600">Producción</h1>
+      <p class="text-sm text-muted">Órdenes por lote: bolsas esperadas, consumo de insumos y merma.</p>
+    </div>
+    <p-button label="Nueva orden" icon="pi pi-plus" (onClick)="abrirNueva()" />
+  </div>
+
+  <div
+    class="overflow-hidden rounded-xl border"
+    style="background-color: var(--surface-card); border-color: var(--surface-border)"
+  >
+    <p-table
+      [value]="ordenes()"
+      [loading]="cargando()"
+      [paginator]="ordenes().length > 10"
+      [rows]="10"
+      responsiveLayout="stack"
+      [breakpoint]="'640px'"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Fecha</th>
+          <th>Producto</th>
+          <th>Sacos</th>
+          <th>Esperadas</th>
+          <th>Reales</th>
+          <th>Merma</th>
+          <th>Costo</th>
+          <th>Estado</th>
+          <th class="text-right">Acciones</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-o>
+        <tr>
+          <td><span class="p-column-title font-medium sm:hidden">Fecha </span>{{ fechaTexto(o.fecha) }}</td>
+          <td><span class="p-column-title font-medium sm:hidden">Producto </span>{{ o.productoNombre }}</td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Sacos </span>
+            {{ cantidadTexto(o.sacos) }} / {{ o.unidadLote }}
+          </td>
+          <td><span class="p-column-title font-medium sm:hidden">Esperadas </span>{{ o.bolsasEsperadas }}</td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Reales </span>
+            {{ o.bolsasReales === null ? '—' : o.bolsasReales }}
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Merma </span>
+            @if (o.merma === null) {
+              <span class="text-muted">—</span>
+            } @else {
+              <span [class.text-primary-600]="o.merma > 0" class="font-medium">{{ o.merma }}</span>
+            }
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Costo </span>
+            <span class="text-muted">{{ dineroTexto(o.costoDelMomento) }}</span>
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Estado </span>
+            <p-tag [value]="estadoTexto(o.estado)" [severity]="severidad(o.estado)" />
+          </td>
+          <td class="text-right whitespace-nowrap">
+            <p-button
+              icon="pi pi-eye"
+              severity="secondary"
+              [text]="true"
+              [rounded]="true"
+              ariaLabel="Ver detalle"
+              pTooltip="Ver consumos"
+              (onClick)="verDetalle(o)"
+            />
+            @if (o.estado === 'BORRADOR') {
+              <p-button
+                icon="pi pi-check"
+                severity="success"
+                [text]="true"
+                [rounded]="true"
+                ariaLabel="Confirmar"
+                pTooltip="Confirmar (descuenta inventario)"
+                (onClick)="confirmarOrden(o)"
+              />
+            }
+            @if (o.estado !== 'ANULADA') {
+              <p-button
+                icon="pi pi-inbox"
+                severity="secondary"
+                [text]="true"
+                [rounded]="true"
+                ariaLabel="Capturar bolsas reales"
+                pTooltip="Capturar bolsas reales"
+                (onClick)="abrirReales(o)"
+              />
+              <p-button
+                icon="pi pi-ban"
+                severity="danger"
+                [text]="true"
+                [rounded]="true"
+                ariaLabel="Anular"
+                pTooltip="Anular"
+                (onClick)="abrirAnular(o)"
+              />
+            }
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="9" class="p-4 text-center text-muted">
+            No hay órdenes de producción todavía.
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</section>
+
+<!-- Diálogo: nueva orden -->
+<p-dialog
+  [visible]="formVisible()"
+  (visibleChange)="formVisible.set($event)"
+  [modal]="true"
+  [style]="{ width: '32rem' }"
+  header="Nueva orden de producción"
+  [dismissableMask]="true"
+>
+  <form [formGroup]="form" (ngSubmit)="guardar()" class="flex flex-col gap-4 pt-2">
+    <div class="flex flex-col gap-1">
+      <label for="producto" class="text-sm font-medium">Producto (con receta)</label>
+      <p-select
+        inputId="producto"
+        formControlName="productoId"
+        [options]="opcionesProducto()"
+        optionLabel="etiqueta"
+        optionValue="productoId"
+        placeholder="Selecciona un producto"
+        appendTo="body"
+        styleClass="w-full"
+        emptyMessage="No hay productos con receta. Crea una receta primero."
+      />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="sacos" class="text-sm font-medium">Sacos / quintales a producir</label>
+      <p-inputnumber
+        inputId="sacos"
+        formControlName="sacos"
+        [min]="0"
+        [maxFractionDigits]="2"
+        styleClass="w-full"
+        inputStyleClass="w-full"
+      />
+    </div>
+
+    @if (bolsasEsperadas(); as esperadas) {
+      <div
+        class="flex items-center justify-between rounded-lg border px-3 py-2 text-sm"
+        style="border-color: var(--surface-border)"
+      >
+        <span class="text-muted">Bolsas esperadas</span>
+        <span class="text-lg font-semibold text-primary-600">{{ esperadas }}</span>
+      </div>
+    }
+
+    <div class="mt-1 flex justify-end gap-2">
+      <p-button
+        type="button"
+        label="Cancelar"
+        severity="secondary"
+        [text]="true"
+        (onClick)="formVisible.set(false)"
+      />
+      <p-button
+        type="submit"
+        label="Crear"
+        icon="pi pi-check"
+        [loading]="guardando()"
+        [disabled]="form.invalid || guardando()"
+      />
+    </div>
+  </form>
+</p-dialog>
+
+<!-- Diálogo: capturar bolsas reales -->
+<p-dialog
+  [visible]="realesVisible()"
+  (visibleChange)="realesVisible.set($event)"
+  [modal]="true"
+  [style]="{ width: '28rem' }"
+  header="Bolsas reales producidas"
+  [dismissableMask]="true"
+>
+  @if (realesOrden(); as orden) {
+    <form [formGroup]="formReales" (ngSubmit)="guardarReales()" class="flex flex-col gap-4 pt-2">
+      <p class="text-sm text-muted">
+        {{ orden.productoNombre }} · esperadas: <span class="font-medium">{{ orden.bolsasEsperadas }}</span>
+      </p>
+      <div class="flex flex-col gap-1">
+        <label for="reales" class="text-sm font-medium">Bolsas reales</label>
+        <p-inputnumber
+          inputId="reales"
+          formControlName="bolsasReales"
+          [min]="0"
+          [maxFractionDigits]="0"
+          styleClass="w-full"
+          inputStyleClass="w-full"
+        />
+      </div>
+      <div class="mt-1 flex justify-end gap-2">
+        <p-button
+          type="button"
+          label="Cancelar"
+          severity="secondary"
+          [text]="true"
+          (onClick)="realesVisible.set(false)"
+        />
+        <p-button
+          type="submit"
+          label="Guardar"
+          icon="pi pi-check"
+          [loading]="guardando()"
+          [disabled]="formReales.invalid || guardando()"
+        />
+      </div>
+    </form>
+  }
+</p-dialog>
+
+<!-- Diálogo: anular -->
+<p-dialog
+  [visible]="anularVisible()"
+  (visibleChange)="anularVisible.set($event)"
+  [modal]="true"
+  [style]="{ width: '28rem' }"
+  header="Anular orden"
+  [dismissableMask]="true"
+>
+  @if (anularOrden(); as orden) {
+    <form [formGroup]="formAnular" (ngSubmit)="guardarAnular()" class="flex flex-col gap-4 pt-2">
+      <p class="text-sm text-muted">
+        Anular la orden de "{{ orden.productoNombre }}". Queda registrada (no se borra).
+      </p>
+      <div class="flex flex-col gap-1">
+        <label for="motivo" class="text-sm font-medium">Motivo</label>
+        <textarea
+          id="motivo"
+          formControlName="motivo"
+          rows="3"
+          class="w-full rounded-md border bg-transparent px-3 py-2 text-sm"
+          style="border-color: var(--surface-border); color: var(--text-color)"
+          placeholder="Motivo de la anulación"
+        ></textarea>
+      </div>
+      <div class="mt-1 flex justify-end gap-2">
+        <p-button
+          type="button"
+          label="Cancelar"
+          severity="secondary"
+          [text]="true"
+          (onClick)="anularVisible.set(false)"
+        />
+        <p-button
+          type="submit"
+          label="Anular"
+          icon="pi pi-ban"
+          severity="danger"
+          [loading]="guardando()"
+          [disabled]="formAnular.invalid || guardando()"
+        />
+      </div>
+    </form>
+  }
+</p-dialog>
+
+<!-- Diálogo: detalle (consumos) -->
+<p-dialog
+  [visible]="detalleVisible()"
+  (visibleChange)="detalleVisible.set($event)"
+  [modal]="true"
+  [style]="{ width: '40rem' }"
+  header="Detalle de la orden"
+  [dismissableMask]="true"
+>
+  @if (detalle(); as d) {
+    <div class="flex flex-col gap-3 pt-1">
+      <div class="grid grid-cols-2 gap-2 text-sm">
+        <span class="text-muted">Producto</span><span class="text-right font-medium">{{ d.productoNombre }}</span>
+        <span class="text-muted">Sacos</span><span class="text-right">{{ cantidadTexto(d.sacos) }} / {{ d.unidadLote }}</span>
+        <span class="text-muted">Bolsas esperadas</span><span class="text-right">{{ d.bolsasEsperadas }}</span>
+        <span class="text-muted">Bolsas reales</span><span class="text-right">{{ d.bolsasReales === null ? '—' : d.bolsasReales }}</span>
+        <span class="text-muted">Merma</span><span class="text-right">{{ d.merma === null ? '—' : d.merma }}</span>
+        <span class="text-muted">Costo del momento</span><span class="text-right font-medium">{{ dineroTexto(d.costoDelMomento) }}</span>
+        <span class="text-muted">Estado</span>
+        <span class="text-right"><p-tag [value]="estadoTexto(d.estado)" [severity]="severidad(d.estado)" /></span>
+      </div>
+
+      @if (d.motivoAnulacion) {
+        <p class="rounded-md border px-3 py-2 text-sm text-muted" style="border-color: var(--surface-border)">
+          <span class="font-medium">Motivo de anulación:</span> {{ d.motivoAnulacion }}
+        </p>
+      }
+
+      <div>
+        <h3 class="mb-2 text-sm font-semibold">Consumo de insumos</h3>
+        @if (d.consumos.length === 0) {
+          <p class="text-sm text-muted">Sin consumos (la orden aún no se ha confirmado).</p>
+        } @else {
+          <div class="overflow-hidden rounded-lg border" style="border-color: var(--surface-border)">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left text-muted">
+                  <th class="px-3 py-2">Insumo</th>
+                  <th class="px-3 py-2 text-right">Cantidad (base)</th>
+                  <th class="px-3 py-2 text-right">Costo</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (c of d.consumos; track c.movimientoId) {
+                  <tr class="border-t" style="border-color: var(--surface-border)">
+                    <td class="px-3 py-2">{{ c.insumoNombre }}</td>
+                    <td class="px-3 py-2 text-right">{{ cantidadTexto(c.cantidadBase) }} {{ c.unidadBaseAbrev }}</td>
+                    <td class="px-3 py-2 text-right">{{ dineroTexto(c.costo) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  } @else {
+    <p class="py-4 text-center text-muted">Cargando…</p>
+  }
+</p-dialog>

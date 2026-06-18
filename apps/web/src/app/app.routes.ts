@@ -51,6 +51,13 @@ export const appRoutes: Route[] = [
           import('./features/recetas/recetas').then((m) => m.RecetasPage),
       },
       {
+        path: 'produccion',
+        // Operación del negocio: solo admin/super_admin.
+        canActivate: [rolGuard('admin', 'super_admin')],
+        loadComponent: () =>
+          import('./features/produccion/produccion').then((m) => m.ProduccionPage),
+      },
+      {
         path: 'usuarios',
         // Solo super_admin (además de ocultarse en la UI).
         canActivate: [rolGuard('super_admin')],

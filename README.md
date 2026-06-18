@@ -4,7 +4,7 @@ Monorepo (Nx) para la gestión de una panadería: facturación, inventario,
 recetas, producción y reportes. Backend en **NestJS + Prisma**, frontend en
 **Angular + PrimeNG + Tailwind**, base de datos **PostgreSQL**.
 
-> Estado actual: **Feature 6 — Recetas** (ver `CLAUDE.md §10`).
+> Estado actual: **Feature 7 — Producción** (ver `CLAUDE.md §10`).
 
 ## Stack
 
@@ -175,6 +175,29 @@ docker exec pane-postgres rm /tmp/censo.sql
 - Endpoints: `GET /api/recetas`, `GET /api/recetas/:id`,
   `GET /api/recetas/producto/:productoId` (o `null`), `POST`, `PATCH`, `DELETE`.
 
+## Producción (Feature 7)
+
+- Una **orden de producción** planifica producir `sacos` (quintales) lotes de un
+  producto **con receta**. Las **bolsas esperadas** se congelan al crear
+  (= sacos × rendimiento). Las **bolsas reales** se capturan después de producir;
+  la **merma** = esperadas − reales se calcula sola.
+- **Estados:** `BORRADOR → CONFIRMADA` (o `ANULADA` con motivo, deja rastro).
+- Al **confirmar** (en **una sola transacción**): se calculan los insumos de la
+  receta (cantidad × sacos, convertidos a unidad base con la conversión de F5), se
+  **descuenta el stock** de cada insumo y se registra un **movimiento de salida**
+  por insumo (origen = la orden, valorado al costo promedio vigente), y se
+  **congela el costo del momento**. La confirmación es **idempotente**: una orden
+  ya confirmada no vuelve a descontar; si falta stock, todo se revierte (400).
+- Los **movimientos de inventario nunca se borran**: son la base del kardex de la
+  Feature 8.
+- **Roles:** solo admin/super_admin.
+- Endpoints: `GET /api/produccion[/:id]`, `POST /api/produccion`,
+  `POST /api/produccion/:id/confirmar`, `PATCH /api/produccion/:id/bolsas-reales`,
+  `POST /api/produccion/:id/anular`.
+
+> El kardex detallado, la cobertura en días y las alertas de stock bajo llegan en
+> la Feature 8 (Inventario / existencias).
+
 ## Scripts útiles
 
 | Script                      | Qué hace                                            |
@@ -208,15 +231,17 @@ docker exec pane-postgres rm /tmp/censo.sql
 │   │       ├── unidades/    # catálogo + ConversionService (tabla)
 │   │       ├── insumos/     # materias primas + existencias
 │   │       ├── compras/     # lotes + costo promedio ponderado
-│   │       ├── costeo/      # estrategia de costeo (interfaz + promedio)
-│   │       └── recetas/     # recetas + costo por bolsa
+│   │       ├── costeo/      # estrategia de costeo (interfaz + promedio + módulo)
+│   │       ├── recetas/     # recetas + costo por bolsa
+│   │       ├── inventario/  # salida de stock + movimientos (base del kardex)
+│   │       └── produccion/  # órdenes: confirmar, descontar, merma, costo
 │   └── web/                 # Angular (PrimeNG + Tailwind)
 │       └── src/
 │           ├── styles.css           # variables CSS de la paleta + modo oscuro
 │           └── app/
 │               ├── core/auth/        # AuthService, interceptor y guards
 │               ├── layout/           # shell (barra + navegación por rol)
-│               ├── features/         # login, inicio, usuarios, productos, clientes, insumos, compras, recetas
+│               ├── features/         # login, inicio, usuarios, productos, clientes, insumos, compras, recetas, produccion
 │               └── theme/            # ThemeService + preset de PrimeNG
 ├── libs/
 │   └── shared/              # tipos/DTOs compartidos (@pane/shared)
