@@ -4,7 +4,7 @@ Monorepo (Nx) para la gestión de una panadería: facturación, inventario,
 recetas, producción y reportes. Backend en **NestJS + Prisma**, frontend en
 **Angular + PrimeNG + Tailwind**, base de datos **PostgreSQL**.
 
-> Estado actual: **Feature 5 — Insumos, unidades y compras** (ver `CLAUDE.md §10`).
+> Estado actual: **Feature 6 — Recetas** (ver `CLAUDE.md §10`).
 
 ## Stack
 
@@ -162,6 +162,19 @@ docker exec pane-postgres rm /tmp/censo.sql
 > El kardex detallado, la cobertura en días y las alertas de stock bajo llegan en
 > la Feature 8 (Inventario / existencias).
 
+## Recetas (Feature 6)
+
+- Una **receta por producto** (un producto puede no tener receta). Es **por lote**
+  (quintal/saco) con un **rendimiento** (bolsas por lote, ej. 223).
+- Los **ingredientes** se definen en cualquier unidad (del mismo tipo que el
+  insumo) y se convierten a la unidad base al costear (reusa la conversión de F5).
+- **Costo de la receta** = Σ (cantidad→base × costo promedio actual del insumo);
+  **costo por bolsa** = costo receta ÷ rendimiento. Se calcula al vuelo con el
+  costo vigente (la producción lo "congelará" en una feature posterior).
+- **Roles:** solo admin/super_admin.
+- Endpoints: `GET /api/recetas`, `GET /api/recetas/:id`,
+  `GET /api/recetas/producto/:productoId` (o `null`), `POST`, `PATCH`, `DELETE`.
+
 ## Scripts útiles
 
 | Script                      | Qué hace                                            |
@@ -195,14 +208,15 @@ docker exec pane-postgres rm /tmp/censo.sql
 │   │       ├── unidades/    # catálogo + ConversionService (tabla)
 │   │       ├── insumos/     # materias primas + existencias
 │   │       ├── compras/     # lotes + costo promedio ponderado
-│   │       └── costeo/      # estrategia de costeo (interfaz + promedio)
+│   │       ├── costeo/      # estrategia de costeo (interfaz + promedio)
+│   │       └── recetas/     # recetas + costo por bolsa
 │   └── web/                 # Angular (PrimeNG + Tailwind)
 │       └── src/
 │           ├── styles.css           # variables CSS de la paleta + modo oscuro
 │           └── app/
 │               ├── core/auth/        # AuthService, interceptor y guards
 │               ├── layout/           # shell (barra + navegación por rol)
-│               ├── features/         # login, inicio, usuarios, productos, clientes, insumos, compras
+│               ├── features/         # login, inicio, usuarios, productos, clientes, insumos, compras, recetas
 │               └── theme/            # ThemeService + preset de PrimeNG
 ├── libs/
 │   └── shared/              # tipos/DTOs compartidos (@pane/shared)

@@ -1,0 +1,219 @@
+<p-toast />
+<p-confirmDialog />
+
+<section class="mx-auto max-w-5xl">
+  <div class="mb-4 flex items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-primary-600">Recetas</h1>
+      <p class="text-sm text-muted">Receta por lote, rendimiento y costo por bolsa.</p>
+    </div>
+    <p-button label="Nueva receta" icon="pi pi-plus" (onClick)="abrirNueva()" />
+  </div>
+
+  <div
+    class="overflow-hidden rounded-xl border"
+    style="background-color: var(--surface-card); border-color: var(--surface-border)"
+  >
+    <p-table
+      [value]="recetas()"
+      [loading]="cargando()"
+      [paginator]="recetas().length > 10"
+      [rows]="10"
+      responsiveLayout="stack"
+      [breakpoint]="'640px'"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Producto</th>
+          <th>Rendimiento</th>
+          <th>Ingredientes</th>
+          <th>Costo receta</th>
+          <th>Costo/bolsa</th>
+          <th class="text-right">Acciones</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-r>
+        <tr>
+          <td><span class="p-column-title font-medium sm:hidden">Producto </span>{{ r.productoNombre }}</td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Rendimiento </span>
+            {{ r.rendimiento }} / {{ r.unidadLote }}
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Ingredientes </span>{{ r.numIngredientes }}
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Costo receta </span>
+            <span class="text-muted">{{ dineroTexto(r.costoReceta) }}</span>
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Costo/bolsa </span>
+            <span class="font-medium">{{ dineroTexto(r.costoPorBolsa) }}</span>
+          </td>
+          <td class="text-right whitespace-nowrap">
+            <p-button
+              icon="pi pi-pencil"
+              severity="secondary"
+              [text]="true"
+              [rounded]="true"
+              ariaLabel="Editar"
+              (onClick)="abrirEdicion(r)"
+            />
+            <p-button
+              icon="pi pi-trash"
+              severity="danger"
+              [text]="true"
+              [rounded]="true"
+              ariaLabel="Eliminar"
+              (onClick)="confirmarEliminar(r)"
+            />
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="6" class="p-4 text-center text-muted">
+            No hay recetas todavía. Un producto puede no tener receta.
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</section>
+
+<!-- Diálogo crear / editar receta -->
+<p-dialog
+  [visible]="formVisible()"
+  (visibleChange)="formVisible.set($event)"
+  [modal]="true"
+  [style]="{ width: '40rem' }"
+  [header]="editandoId() === null ? 'Nueva receta' : 'Editar receta'"
+  [dismissableMask]="true"
+>
+  <form [formGroup]="form" (ngSubmit)="guardar()" class="flex flex-col gap-4 pt-2">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div class="flex flex-col gap-1 sm:col-span-2">
+        <label for="producto" class="text-sm font-medium">Producto</label>
+        <p-select
+          inputId="producto"
+          formControlName="productoId"
+          [options]="productosParaSelect()"
+          optionLabel="nombre"
+          optionValue="id"
+          placeholder="Selecciona un producto"
+          appendTo="body"
+          styleClass="w-full"
+        />
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label for="rendimiento" class="text-sm font-medium">Rendimiento (bolsas)</label>
+        <p-inputnumber
+          inputId="rendimiento"
+          formControlName="rendimiento"
+          [min]="1"
+          [maxFractionDigits]="0"
+          styleClass="w-full"
+          inputStyleClass="w-full"
+        />
+      </div>
+      <div class="flex flex-col gap-1">
+        <label for="unidadLote" class="text-sm font-medium">Unidad de lote</label>
+        <input pInputText id="unidadLote" formControlName="unidadLote" class="w-full" placeholder="quintal, saco…" />
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <span class="text-sm font-medium">Ingredientes</span>
+      <div class="flex flex-col gap-2">
+        @for (grupo of ingredientes.controls; track $index; let i = $index) {
+          <div [formGroup]="$any(grupo)" class="grid grid-cols-12 items-center gap-2">
+            <div class="col-span-12 sm:col-span-5">
+              <p-select
+                formControlName="insumoId"
+                [options]="insumosActivos()"
+                optionLabel="nombre"
+                optionValue="id"
+                placeholder="Insumo"
+                appendTo="body"
+                styleClass="w-full"
+                (onChange)="alCambiarInsumoFila(i)"
+              />
+            </div>
+            <div class="col-span-5 sm:col-span-3">
+              <p-inputnumber
+                formControlName="cantidad"
+                [min]="0"
+                [maxFractionDigits]="4"
+                placeholder="Cant."
+                styleClass="w-full"
+                inputStyleClass="w-full"
+              />
+            </div>
+            <div class="col-span-5 sm:col-span-3">
+              <p-select
+                formControlName="unidadId"
+                [options]="unidadesParaInsumoId(grupo.value.insumoId)"
+                optionLabel="abreviatura"
+                optionValue="id"
+                placeholder="Unidad"
+                appendTo="body"
+                styleClass="w-full"
+              />
+            </div>
+            <div class="col-span-2 sm:col-span-1 flex justify-end">
+              <p-button
+                icon="pi pi-trash"
+                severity="danger"
+                [text]="true"
+                [rounded]="true"
+                ariaLabel="Quitar ingrediente"
+                [disabled]="ingredientes.length === 1"
+                (onClick)="quitarIngrediente(i)"
+              />
+            </div>
+          </div>
+        }
+      </div>
+      <p-button
+        label="Agregar ingrediente"
+        icon="pi pi-plus"
+        severity="secondary"
+        [text]="true"
+        size="small"
+        (onClick)="agregarIngrediente()"
+      />
+    </div>
+
+    @if (costoPreview(); as preview) {
+      <div
+        class="flex items-center justify-between rounded-lg border px-3 py-2 text-sm"
+        style="border-color: var(--surface-border)"
+      >
+        <span class="text-muted">Costo receta: {{ dineroFinoTexto(preview.receta) }}</span>
+        <span class="font-medium text-primary-600">
+          Costo/bolsa: {{ dineroFinoTexto(preview.porBolsa) }}
+        </span>
+      </div>
+    }
+
+    <div class="mt-1 flex justify-end gap-2">
+      <p-button
+        type="button"
+        label="Cancelar"
+        severity="secondary"
+        [text]="true"
+        (onClick)="formVisible.set(false)"
+      />
+      <p-button
+        type="submit"
+        label="Guardar"
+        icon="pi pi-check"
+        [loading]="guardando()"
+        [disabled]="form.invalid || ingredientes.length === 0 || guardando()"
+      />
+    </div>
+  </form>
+</p-dialog>

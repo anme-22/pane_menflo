@@ -460,7 +460,29 @@ ocultamiento de UI por rol en Angular.
       ponderado 10000/136077.6, rechazo de tipo distinto 400, 401 sin token,
       vendedor 403 en compras / 200 en insumos] y UI desktop/móvil; tests
       api[+9: conversión, promedio, compra] + web[+4: insumos, compras] verdes.)
-- [ ] Feature 6 — Recetas
+- [x] Feature 6 — Recetas
+      (Depende de F3 productos y F5 insumos/conversión. Prisma: `receta`
+      [productoId ÚNICO — una receta por producto; rendimiento Int; unidadLote
+      texto, default "quintal"] y `receta_ingrediente` [insumo + cantidad +
+      unidad; cascade al borrar la receta]; migración con CHECK rendimiento>0 y
+      cantidad>0. Un producto puede no tener receta. Backend: RecetasService
+      [CRUD; al editar reemplaza el set de ingredientes en transacción; valida
+      que la unidad del ingrediente sea del mismo tipo que el insumo] +
+      CostoRecetaService [responsabilidad única; reutiliza ConversionService de
+      F5 para llevar cada ingrediente a base y valora al costo del momento =
+      costoPromedio de la existencia; costo por bolsa = costoReceta/rendimiento;
+      insumo sin existencia aporta 0]. Endpoints GET /recetas[/:id][/producto/
+      :productoId], POST, PATCH, DELETE; solo admin/super_admin. libs/shared:
+      RecetaDto/ResumenDto/IngredienteDto + Crear/Actualizar. Web: /recetas en
+      NAV_ITEMS [admin/super_admin], listado con costo por bolsa y editor con
+      ingredientes dinámicos [FormArray] y costo por bolsa EN VIVO. NOTA: la app
+      es ZONELESS — las filas del FormArray se enlazan con `[formGroup]="grupo"`
+      [no `[formGroupName]`] y la reactividad del costo/opciones se apoya en un
+      signal del form [toSignal(valueChanges)]. Verificado contra BD [costeo
+      ≈1000 con precisión de 6 decimales, costo/bolsa 5 y 10 al reeditar, 409
+      receta duplicada, 400 unidad de otro tipo, 401 sin token, borrado en
+      cascada] y UI desktop [alta con costo en vivo, receta en lista]; tests
+      api[+2: costo receta y costo/bolsa] + web[+3: recetas service] verdes.)
 - [ ] Feature 7 — Producción
 - [ ] Feature 8 — Inventario / existencias
 - [ ] Feature 9 — Facturación

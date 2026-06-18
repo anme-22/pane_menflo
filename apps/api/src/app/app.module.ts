@@ -12,6 +12,7 @@ import { UnidadesModule } from './unidades/unidades.module';
 import { SucursalesModule } from './sucursales/sucursales.module';
 import { InsumosModule } from './insumos/insumos.module';
 import { ComprasModule } from './compras/compras.module';
+import { RecetasModule } from './recetas/recetas.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { ComprasModule } from './compras/compras.module';
     SucursalesModule,
     InsumosModule,
     ComprasModule,
+    RecetasModule,
   ],
   controllers: [AppController],
   providers: [AppService],
