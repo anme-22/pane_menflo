@@ -48,6 +48,26 @@ enum TipoMovimiento {
   @@schema("public")
 }
 
+/// Estado de una factura (Feature 9). BORRADOR: se edita libre. EMITIDA: ya no
+/// se reescribe (se anula y se emite otra, o se edita con motivo dejando rastro
+/// en la bitácora). ANULADA: terminal, con motivo. Las facturas NO se borran.
+enum EstadoFactura {
+  BORRADOR
+  EMITIDA
+  ANULADA
+
+  @@schema("public")
+}
+
+/// Tipo de pago de una factura (Feature 9). CONTADO se considera pagada al
+/// emitir; CREDITO se salda con abonos (el saldo/estado de pago se calculan).
+enum TipoPago {
+  CONTADO
+  CREDITO
+
+  @@schema("public")
+}
+
 /// Roles del sistema (ver CLAUDE.md §7).
 /// - super_admin: crea/gestiona usuarios; acceso total.
 /// - admin: gestiona el negocio (no necesariamente usuarios).
@@ -72,6 +92,9 @@ model Usuario {
   activo        Boolean    @default(true)
   creadoEn      DateTime   @default(now()) @map("creado_en")
   actualizadoEn DateTime   @updatedAt @map("actualizado_en")
+
+  facturas  Factura[]
+  bitacoras FacturaBitacora[]
 
   @@map("usuario")
   @@schema("public")
@@ -106,9 +129,10 @@ model Producto {
   creadoEn      DateTime @default(now()) @map("creado_en")
   actualizadoEn DateTime @updatedAt @map("actualizado_en")
 
-  precios PrecioProducto[]
-  receta  Receta?
-  ordenes OrdenProduccion[]
+  precios         PrecioProducto[]
+  receta          Receta?
+  ordenes         OrdenProduccion[]
+  detallesFactura FacturaDetalle[]
 
   @@map("producto")
   @@schema("public")
@@ -147,6 +171,7 @@ model Sucursal {
   existencias Existencia[]
   ordenes     OrdenProduccion[]
   movimientos MovimientoInventario[]
+  facturas    Factura[]
 
   @@map("sucursal")
   @@schema("public")
@@ -338,6 +363,8 @@ model Cliente {
   creadoEn      DateTime @default(now()) @map("creado_en")
   actualizadoEn DateTime @updatedAt @map("actualizado_en")
 
+  facturas Factura[]
+
   @@map("cliente")
   @@schema("public")
 }
@@ -365,4 +392,119 @@ model CensoNacional {
   @@index([primerApellido, primerNombre], map: "censo_nacional_nombre_idx")
   @@map("censo_nacional")
   @@schema("grl")
+}
+
+/// Configuración del sistema (Feature 9; pantalla de edición en F12). Fila única
+/// sembrada. Banderas: ISV (apagado hoy), facturación fiscal/CAI (apagada) y PIN
+/// de edición (apagado). Hoy solo se LEE para resolver impuesto y campos fiscales.
+model Configuracion {
+  id                      Int       @id @default(autoincrement())
+  isvActivo               Boolean   @default(false) @map("isv_activo")
+  tasaIsv                 Decimal   @default(0) @map("tasa_isv") @db.Decimal(5, 4)
+  facturacionFiscalActiva Boolean   @default(false) @map("facturacion_fiscal_activa")
+  cai                     String?   @db.VarChar(50)
+  caiRango                String?   @map("cai_rango") @db.VarChar(100)
+  caiFechaLimite          DateTime? @map("cai_fecha_limite") @db.Date
+  pinEdicionActivo        Boolean   @default(false) @map("pin_edicion_activo")
+  actualizadoEn           DateTime  @updatedAt @map("actualizado_en")
+
+  @@map("configuracion")
+  @@schema("public")
+}
+
+/// Factura (Feature 9). La verdad histórica de una venta. El detalle copia
+/// (snapshot) nombre y precio del producto, así que cambiar `precio_producto`
+/// luego NO la altera. `subtotal/impuesto/total` se calculan (estrategia de
+/// impuesto por línea) y se guardan al emitir. El estado de pago y el saldo NO
+/// son columnas: se calculan desde los abonos. Campos fiscales (cai/numero)
+/// nullable, apagados por bandera. Estados BORRADOR→EMITIDA→ANULADA; NO se borra.
+model Factura {
+  id               Int           @id @default(autoincrement())
+  numero           String?       @db.VarChar(50)
+  sucursalId       Int           @map("sucursal_id")
+  clienteIdentidad String?       @map("cliente_identidad") @db.Char(13)
+  usuarioId        Int           @map("usuario_id")
+  estado           EstadoFactura @default(BORRADOR)
+  tipoPago         TipoPago      @default(CONTADO) @map("tipo_pago")
+  fecha            DateTime      @default(now())
+  subtotal         Decimal       @default(0) @db.Decimal(12, 2)
+  impuesto         Decimal       @default(0) @db.Decimal(12, 2)
+  total            Decimal       @default(0) @db.Decimal(12, 2)
+  cai              String?       @db.VarChar(50)
+  caiRango         String?       @map("cai_rango") @db.VarChar(100)
+  caiFechaLimite   DateTime?     @map("cai_fecha_limite") @db.Date
+  motivoAnulacion  String?       @map("motivo_anulacion") @db.VarChar(300)
+  emitidaEn        DateTime?     @map("emitida_en")
+  creadoEn         DateTime      @default(now()) @map("creado_en")
+  actualizadoEn    DateTime      @updatedAt @map("actualizado_en")
+
+  sucursal Sucursal          @relation(fields: [sucursalId], references: [id])
+  cliente  Cliente?          @relation(fields: [clienteIdentidad], references: [identidad])
+  usuario  Usuario           @relation(fields: [usuarioId], references: [id])
+  detalles FacturaDetalle[]
+  abonos   Abono[]
+  bitacora FacturaBitacora[]
+
+  @@index([clienteIdentidad])
+  @@index([estado])
+  @@map("factura")
+  @@schema("public")
+}
+
+/// Línea de factura (Feature 9). COPIA `nombreProducto` y `precioUnitario` al
+/// momento de la venta (snapshot): la factura no depende de la tabla de precios.
+/// `tasaImpuesto` es por línea, default 0 (soporta el caso mixto futuro).
+model FacturaDetalle {
+  id             Int     @id @default(autoincrement())
+  facturaId      Int     @map("factura_id")
+  productoId     Int     @map("producto_id")
+  nombreProducto String  @map("nombre_producto") @db.VarChar(150)
+  precioUnitario Decimal @map("precio_unitario") @db.Decimal(12, 2)
+  cantidad       Decimal @db.Decimal(12, 2)
+  tasaImpuesto   Decimal @default(0) @map("tasa_impuesto") @db.Decimal(5, 4)
+
+  factura  Factura  @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+  producto Producto @relation(fields: [productoId], references: [id])
+
+  @@index([facturaId])
+  @@map("factura_detalle")
+  @@schema("public")
+}
+
+/// Abono (pago parcial) de una factura de crédito (Feature 9). El estado de pago
+/// (PENDIENTE/PARCIAL/PAGADA) y el saldo se calculan sumando los abonos.
+model Abono {
+  id        Int      @id @default(autoincrement())
+  facturaId Int      @map("factura_id")
+  monto     Decimal  @db.Decimal(12, 2)
+  fecha     DateTime @default(now())
+  metodo    String   @db.VarChar(30)
+  creadoEn  DateTime @default(now()) @map("creado_en")
+
+  factura Factura @relation(fields: [facturaId], references: [id])
+
+  @@index([facturaId])
+  @@map("abono")
+  @@schema("public")
+}
+
+/// Bitácora de una factura (Feature 9). Rastro inmutable de quién hizo qué y por
+/// qué: se escribe al emitir, al editar una EMITIDA (con motivo obligatorio, una
+/// fila por campo cambiado) y al anular. No se borra.
+model FacturaBitacora {
+  id            Int      @id @default(autoincrement())
+  facturaId     Int      @map("factura_id")
+  usuarioId     Int      @map("usuario_id")
+  cuando        DateTime @default(now())
+  campo         String   @db.VarChar(50)
+  valorAnterior String?  @map("valor_anterior") @db.VarChar(300)
+  valorNuevo    String?  @map("valor_nuevo") @db.VarChar(300)
+  motivo        String?  @db.VarChar(300)
+
+  factura Factura @relation(fields: [facturaId], references: [id])
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+
+  @@index([facturaId])
+  @@map("factura_bitacora")
+  @@schema("public")
 }

@@ -4,7 +4,7 @@ Monorepo (Nx) para la gestión de una panadería: facturación, inventario,
 recetas, producción y reportes. Backend en **NestJS + Prisma**, frontend en
 **Angular + PrimeNG + Tailwind**, base de datos **PostgreSQL**.
 
-> Estado actual: **Feature 8 — Inventario / existencias** (ver `CLAUDE.md §10`).
+> Estado actual: **Feature 9 — Facturación** (ver `CLAUDE.md §10`).
 
 ## Stack
 
@@ -219,6 +219,27 @@ los **tres roles** (el vendedor en modo consulta).
 - Endpoints: `GET /api/inventario/existencias`, `GET /api/inventario/alertas`,
   `GET /api/inventario/kardex/:insumoId`, `POST /api/inventario/cobertura`.
 
+## Facturación (Feature 9)
+
+- La pantalla **Facturas** la usan los **tres roles** (el vendedor crea, ve, edita
+  con motivo e imprime).
+- El detalle **copia (snapshot)** el nombre y el precio del producto al momento de
+  la venta: **cambiar el precio después NO altera la factura.**
+- **Tipo de pago contado / crédito.** Las de crédito se saldan con **abonos**; el
+  **saldo** y el **estado de pago** (PENDIENTE / PARCIAL / PAGADA) se **calculan**
+  desde los abonos (las de contado se consideran pagadas al emitir).
+- **Impuesto por línea** con default **0**; la factura totaliza subtotal/impuesto/
+  total (la regla vive tras una interfaz, se cambia sin tocar el servicio).
+- **Estados BORRADOR → EMITIDA → ANULADA.** En borrador se edita libre; una
+  **emitida no se reescribe**: se anula (con motivo) y se emite otra, o se edita
+  **con motivo obligatorio**. Emisión/edición/anulación quedan en la **bitácora**
+  (quién, cuándo, qué cambió, motivo). **Nada se borra.**
+- Campos **fiscales** (CAI, número) quedan **nullable y apagados** por bandera de
+  `configuracion` (se encienden en la Feature 12).
+- Endpoints: `GET /api/facturas[/:id]`, `POST /api/facturas`,
+  `PATCH /api/facturas/:id`, `POST /api/facturas/:id/{emitir,anular,abonos}` y
+  `GET /api/configuracion`.
+
 ## Scripts útiles
 
 | Script                      | Qué hace                                            |
@@ -255,14 +276,17 @@ los **tres roles** (el vendedor en modo consulta).
 │   │       ├── costeo/      # estrategia de costeo (interfaz + promedio + módulo)
 │   │       ├── recetas/     # recetas + costo por bolsa
 │   │       ├── inventario/  # entrada/salida de stock + movimientos + consulta (kardex, cobertura, alertas)
-│   │       └── produccion/  # órdenes: confirmar, descontar, merma, costo
+│   │       ├── produccion/  # órdenes: confirmar, descontar, merma, costo
+│   │       ├── impuesto/    # estrategia de impuesto (interfaz + por línea)
+│   │       ├── configuracion/ # banderas del sistema (lectura; edición en F12)
+│   │       └── facturas/    # facturación: snapshot, abonos, bitácora, impresión
 │   └── web/                 # Angular (PrimeNG + Tailwind)
 │       └── src/
 │           ├── styles.css           # variables CSS de la paleta + modo oscuro
 │           └── app/
 │               ├── core/auth/        # AuthService, interceptor y guards
 │               ├── layout/           # shell (barra + navegación por rol)
-│               ├── features/         # login, inicio, usuarios, productos, clientes, insumos, compras, recetas, produccion, inventario
+│               ├── features/         # login, inicio, usuarios, productos, clientes, insumos, compras, recetas, produccion, inventario, facturas
 │               └── theme/            # ThemeService + preset de PrimeNG
 ├── libs/
 │   └── shared/              # tipos/DTOs compartidos (@pane/shared)

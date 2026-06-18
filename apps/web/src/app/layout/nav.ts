@@ -30,5 +30,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Recetas', icon: 'pi pi-book', route: '/recetas', roles: ['admin', 'super_admin'] },
   // Producción: operación del negocio, solo admin/super_admin.
   { label: 'Producción', icon: 'pi pi-cog', route: '/produccion', roles: ['admin', 'super_admin'] },
+  // Facturas: venta; la usan los tres roles (el vendedor incluido).
+  { label: 'Facturas', icon: 'pi pi-receipt', route: '/facturas' },
   { label: 'Usuarios', icon: 'pi pi-users', route: '/usuarios', roles: ['super_admin'] },
 ];
