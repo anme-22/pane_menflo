@@ -70,6 +70,13 @@ export const appRoutes: Route[] = [
           import('./features/facturas/facturas').then((m) => m.FacturasPage),
       },
       {
+        path: 'reportes',
+        // Gestión/ganancias: solo admin/super_admin.
+        canActivate: [rolGuard('admin', 'super_admin')],
+        loadComponent: () =>
+          import('./features/reportes/reportes').then((m) => m.ReportesPage),
+      },
+      {
         path: 'usuarios',
         // Solo super_admin (además de ocultarse en la UI).
         canActivate: [rolGuard('super_admin')],

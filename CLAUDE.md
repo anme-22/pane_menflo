@@ -584,6 +584,31 @@ ocultamiento de UI por rol en Angular.
       productos / costo por bolsa real es una revisión futura de Producción; no afecta a
       Facturación (cada variante es un producto+precio). tests api[+9: impuesto, calculo-pago,
       reglas de estado] + web[+4: facturas service] verdes.)
-- [ ] Feature 10 — Reportes y ganancias
+- [x] Feature 10 — Reportes y ganancias
+      (Capa de CONSULTA (solo lectura) sobre F9 (facturas) y F7 (movimientos). NO crea
+      tablas. Backend: módulo `reportes` con ReportesService (SOLID-S) que REUTILIZA
+      CostoRecetaService [F6, exportado desde RecetasModule] para el costo por bolsa y
+      calcularPago [F9] para los saldos — no duplica lógica. Cuatro reportes: (1)
+      ventas por periodo [facturas EMITIDA en rango: resumen subtotal/impuesto/total +
+      desglose por día]; (2) ganancia por producto [de factura_detalle: ingreso = Σ
+      (precioUnitario SNAPSHOT × cantidad) − costo por bolsa actual × cantidad;
+      productos sin receta van conCosteo=false, ganancia=ingreso]; (3) consumo de
+      insumos [agrega movimiento_inventario SALIDA del periodo por insumo → cuadra con
+      la producción]; (4) cuentas por cobrar [facturas CREDITO EMITIDA con saldo>0].
+      Endpoints GET /reportes/{ventas,ganancia-por-producto,consumo-insumos}?desde&hasta
+      (YYYY-MM-DD, rango inclusivo, valida 400) y /reportes/cuentas-por-cobrar; SOLO
+      admin/super_admin. libs/shared: VentasReporteDto/VentaPorDiaDto, GananciaReporteDto/
+      ProductoDto, ConsumoInsumosReporteDto/InsumoDto, CuentasPorCobrarReporteDto/
+      CuentaPorCobrarDto, PeriodoReporte. Web: /reportes en NAV_ITEMS [admin/super_admin],
+      filtro de periodo común (input date, default mes en curso) + 4 secciones con
+      tablas tabla→tarjetas; cuentas por cobrar carga aparte (saldo vivo). Verificado
+      contra BD [e2e 16/16: ventas total 150 / 2 facturas, fecha inválida 400, ganancia
+      ingreso 150 por snapshot (cambiar precio a 999 NO lo altera) − costo/bolsa 1 =
+      135, consumo 2000 g / L200 (cuadra con 2 sacos × 1 kg), cuentas por cobrar saldo
+      30 = 50−20, 401] y UI [4 reportes con los números exactos; captura]. NOTA: el
+      costo de la ganancia usa el costo por bolsa ACTUAL (promedio ponderado vigente);
+      el costo histórico por venta y la masa→varios productos quedan para la revisión
+      futura de Producción. tests api[+5: ganancia, consumo, cuentas, rango] + web[+4:
+      reportes service] verdes.)
 - [ ] Feature 11 — Deploy
 - [ ] Feature 12 — Configuración

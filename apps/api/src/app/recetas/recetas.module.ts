@@ -13,5 +13,6 @@ import { CostoRecetaService } from './costo-receta.service';
   imports: [UnidadesModule, SucursalesModule],
   controllers: [RecetasController],
   providers: [RecetasService, CostoRecetaService],
+  exports: [CostoRecetaService],
 })
 export class RecetasModule {}
