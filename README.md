@@ -4,7 +4,7 @@ Monorepo (Nx) para la gestión de una panadería: facturación, inventario,
 recetas, producción y reportes. Backend en **NestJS + Prisma**, frontend en
 **Angular + PrimeNG + Tailwind**, base de datos **PostgreSQL**.
 
-> Estado actual: **Feature 9 — Facturación** (ver `CLAUDE.md §10`).
+> Estado actual: **Feature 10 — Reportes y ganancias** (ver `CLAUDE.md §10`).
 
 ## Stack
 
@@ -240,6 +240,23 @@ los **tres roles** (el vendedor en modo consulta).
   `PATCH /api/facturas/:id`, `POST /api/facturas/:id/{emitir,anular,abonos}` y
   `GET /api/configuracion`.
 
+## Reportes y ganancias (Feature 10)
+
+Capa de **consulta** (solo lectura), **solo admin/super_admin**, con filtro de
+periodo (`desde`/`hasta`):
+
+- **Ventas por periodo:** total facturado, impuesto y desglose por día (solo
+  facturas emitidas).
+- **Ganancia por producto:** ingreso = Σ (**precio de la factura** × cantidad) −
+  **costo por bolsa** × cantidad. Usa el precio _snapshot_ de la factura (no el
+  actual). El costo por bolsa reutiliza el costeo de recetas (promedio ponderado
+  vigente); los productos sin receta salen "sin costeo".
+- **Consumo de insumos:** suma las salidas de inventario (producción) del periodo
+  por insumo → **cuadra con la producción**.
+- **Cuentas por cobrar:** saldos pendientes de las facturas a crédito.
+- Endpoints: `GET /api/reportes/{ventas,ganancia-por-producto,consumo-insumos}?desde=&hasta=`
+  y `GET /api/reportes/cuentas-por-cobrar`.
+
 ## Scripts útiles
 
 | Script                      | Qué hace                                            |
@@ -279,14 +296,15 @@ los **tres roles** (el vendedor en modo consulta).
 │   │       ├── produccion/  # órdenes: confirmar, descontar, merma, costo
 │   │       ├── impuesto/    # estrategia de impuesto (interfaz + por línea)
 │   │       ├── configuracion/ # banderas del sistema (lectura; edición en F12)
-│   │       └── facturas/    # facturación: snapshot, abonos, bitácora, impresión
+│   │       ├── facturas/    # facturación: snapshot, abonos, bitácora, impresión
+│   │       └── reportes/    # ventas, ganancia, consumo, cuentas por cobrar
 │   └── web/                 # Angular (PrimeNG + Tailwind)
 │       └── src/
 │           ├── styles.css           # variables CSS de la paleta + modo oscuro
 │           └── app/
 │               ├── core/auth/        # AuthService, interceptor y guards
 │               ├── layout/           # shell (barra + navegación por rol)
-│               ├── features/         # login, inicio, usuarios, productos, clientes, insumos, compras, recetas, produccion, inventario, facturas
+│               ├── features/         # login, inicio, usuarios, productos, clientes, insumos, compras, recetas, produccion, inventario, facturas, reportes
 │               └── theme/            # ThemeService + preset de PrimeNG
 ├── libs/
 │   └── shared/              # tipos/DTOs compartidos (@pane/shared)

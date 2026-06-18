@@ -18,6 +18,7 @@ import { ProduccionModule } from './produccion/produccion.module';
 import { ConfiguracionModule } from './configuracion/configuracion.module';
 import { ImpuestoModule } from './impuesto/impuesto.module';
 import { FacturasModule } from './facturas/facturas.module';
+import { ReportesModule } from './reportes/reportes.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { FacturasModule } from './facturas/facturas.module';
     ConfiguracionModule,
     ImpuestoModule,
     FacturasModule,
+    ReportesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

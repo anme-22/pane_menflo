@@ -1,0 +1,144 @@
+<p-toast />
+
+<section class="mx-auto flex max-w-6xl flex-col gap-6">
+  <div>
+    <h1 class="text-2xl font-bold text-primary-600">Reportes</h1>
+    <p class="text-sm text-muted">Ventas, ganancia por producto, consumo de insumos y cuentas por cobrar.</p>
+  </div>
+
+  <!-- Filtro de periodo -->
+  <div class="flex flex-wrap items-end gap-3 rounded-xl border p-4" style="border-color: var(--surface-border)">
+    <div class="flex flex-col gap-1">
+      <label for="desde" class="text-sm font-medium">Desde</label>
+      <input id="desde" type="date" [ngModel]="desde()" (ngModelChange)="desde.set($event)"
+        class="rounded-md border bg-transparent px-3 py-2 text-sm"
+        style="border-color: var(--surface-border); color: var(--text-color)" />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label for="hasta" class="text-sm font-medium">Hasta</label>
+      <input id="hasta" type="date" [ngModel]="hasta()" (ngModelChange)="hasta.set($event)"
+        class="rounded-md border bg-transparent px-3 py-2 text-sm"
+        style="border-color: var(--surface-border); color: var(--text-color)" />
+    </div>
+    <p-button label="Generar" icon="pi pi-chart-line" [loading]="generando()" (onClick)="generar()" />
+  </div>
+
+  <!-- Ventas por periodo -->
+  <div>
+    <h2 class="mb-2 font-semibold">Ventas por periodo</h2>
+    @if (ventas(); as v) {
+      <div class="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div class="rounded-lg border p-3" style="border-color: var(--surface-border)">
+          <div class="text-xs text-muted">Facturas</div><div class="text-lg font-semibold">{{ v.numFacturas }}</div>
+        </div>
+        <div class="rounded-lg border p-3" style="border-color: var(--surface-border)">
+          <div class="text-xs text-muted">Subtotal</div><div class="text-lg font-semibold">{{ dineroTexto(v.subtotal) }}</div>
+        </div>
+        <div class="rounded-lg border p-3" style="border-color: var(--surface-border)">
+          <div class="text-xs text-muted">Impuesto</div><div class="text-lg font-semibold">{{ dineroTexto(v.impuesto) }}</div>
+        </div>
+        <div class="rounded-lg border p-3" style="border-color: var(--surface-border)">
+          <div class="text-xs text-muted">Total</div><div class="text-lg font-semibold text-primary-600">{{ dineroTexto(v.total) }}</div>
+        </div>
+      </div>
+      <div class="overflow-hidden rounded-xl border" style="background-color: var(--surface-card); border-color: var(--surface-border)">
+        <p-table [value]="v.porDia" responsiveLayout="stack" [breakpoint]="'640px'">
+          <ng-template pTemplate="header"><tr><th>Día</th><th>Facturas</th><th class="text-right">Total</th></tr></ng-template>
+          <ng-template pTemplate="body" let-d>
+            <tr>
+              <td><span class="p-column-title font-medium sm:hidden">Día </span>{{ fechaDiaTexto(d.fecha) }}</td>
+              <td><span class="p-column-title font-medium sm:hidden">Facturas </span>{{ d.numFacturas }}</td>
+              <td class="text-right">{{ dineroTexto(d.total) }}</td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage"><tr><td colspan="3" class="p-4 text-center text-muted">Sin ventas en el periodo.</td></tr></ng-template>
+        </p-table>
+      </div>
+    }
+  </div>
+
+  <!-- Ganancia por producto -->
+  <div>
+    <h2 class="mb-2 font-semibold">Ganancia por producto</h2>
+    @if (ganancia(); as g) {
+      <div class="overflow-hidden rounded-xl border" style="background-color: var(--surface-card); border-color: var(--surface-border)">
+        <p-table [value]="g.productos" responsiveLayout="stack" [breakpoint]="'640px'">
+          <ng-template pTemplate="header">
+            <tr><th>Producto</th><th class="text-right">Cant.</th><th class="text-right">Ingreso</th>
+            <th class="text-right">Costo/u</th><th class="text-right">Ganancia</th></tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-p>
+            <tr>
+              <td>
+                <span class="p-column-title font-medium sm:hidden">Producto </span>{{ p.nombreProducto }}
+                @if (!p.conCosteo) { <p-tag class="ml-1" value="sin costeo" severity="warn" /> }
+              </td>
+              <td class="text-right"><span class="p-column-title font-medium sm:hidden">Cant. </span>{{ cantidadTexto(p.cantidadVendida) }}</td>
+              <td class="text-right"><span class="p-column-title font-medium sm:hidden">Ingreso </span>{{ dineroTexto(p.ingreso) }}</td>
+              <td class="text-right">
+                <span class="p-column-title font-medium sm:hidden">Costo/u </span>
+                {{ p.costoUnitario === null ? '—' : dineroTexto(p.costoUnitario) }}
+              </td>
+              <td class="text-right font-medium" [class.text-primary-600]="gananciaPositiva(p.ganancia)">
+                <span class="p-column-title font-medium sm:hidden">Ganancia </span>{{ dineroTexto(p.ganancia) }}
+              </td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage"><tr><td colspan="5" class="p-4 text-center text-muted">Sin ventas en el periodo.</td></tr></ng-template>
+        </p-table>
+      </div>
+      <div class="mt-2 flex flex-wrap justify-end gap-4 text-sm">
+        <span class="text-muted">Ingreso: {{ dineroTexto(g.ingresoTotal) }}</span>
+        <span class="text-muted">Costo: {{ dineroTexto(g.costoTotal) }}</span>
+        <span class="font-semibold text-primary-600">Ganancia: {{ dineroTexto(g.gananciaTotal) }}</span>
+      </div>
+    }
+  </div>
+
+  <!-- Consumo de insumos -->
+  <div>
+    <h2 class="mb-2 font-semibold">Consumo de insumos</h2>
+    @if (consumo(); as c) {
+      <div class="overflow-hidden rounded-xl border" style="background-color: var(--surface-card); border-color: var(--surface-border)">
+        <p-table [value]="c.insumos" responsiveLayout="stack" [breakpoint]="'640px'">
+          <ng-template pTemplate="header"><tr><th>Insumo</th><th class="text-right">Consumo (base)</th><th class="text-right">Costo</th></tr></ng-template>
+          <ng-template pTemplate="body" let-i>
+            <tr>
+              <td><span class="p-column-title font-medium sm:hidden">Insumo </span>{{ i.insumoNombre }}</td>
+              <td class="text-right"><span class="p-column-title font-medium sm:hidden">Consumo </span>{{ cantidadTexto(i.cantidadBase, i.unidadBaseAbrev) }}</td>
+              <td class="text-right">{{ dineroTexto(i.costo) }}</td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage"><tr><td colspan="3" class="p-4 text-center text-muted">Sin consumo en el periodo.</td></tr></ng-template>
+        </p-table>
+      </div>
+      <div class="mt-2 text-right text-sm font-semibold text-primary-600">Costo total: {{ dineroTexto(c.costoTotal) }}</div>
+    }
+  </div>
+
+  <!-- Cuentas por cobrar -->
+  <div>
+    <h2 class="mb-2 font-semibold">Cuentas por cobrar</h2>
+    @if (cuentas(); as cc) {
+      <div class="overflow-hidden rounded-xl border" style="background-color: var(--surface-card); border-color: var(--surface-border)">
+        <p-table [value]="cc.cuentas" responsiveLayout="stack" [breakpoint]="'640px'">
+          <ng-template pTemplate="header">
+            <tr><th>#</th><th>Fecha</th><th>Cliente</th><th class="text-right">Total</th><th class="text-right">Abonado</th><th class="text-right">Saldo</th></tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-c>
+            <tr>
+              <td><span class="p-column-title font-medium sm:hidden">#</span>{{ c.numero ?? c.facturaId }}</td>
+              <td><span class="p-column-title font-medium sm:hidden">Fecha </span>{{ fechaTexto(c.fecha) }}</td>
+              <td><span class="p-column-title font-medium sm:hidden">Cliente </span>{{ c.clienteNombre ?? 'Consumidor final' }}</td>
+              <td class="text-right">{{ dineroTexto(c.total) }}</td>
+              <td class="text-right">{{ dineroTexto(c.abonado) }}</td>
+              <td class="text-right font-medium text-primary-600">{{ dineroTexto(c.saldo) }}</td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage"><tr><td colspan="6" class="p-4 text-center text-muted">No hay saldos pendientes.</td></tr></ng-template>
+        </p-table>
+      </div>
+      <div class="mt-2 text-right text-sm font-semibold text-primary-600">Total por cobrar: {{ dineroTexto(cc.totalPorCobrar) }}</div>
+    }
+  </div>
+</section>
