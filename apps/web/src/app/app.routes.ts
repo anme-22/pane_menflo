@@ -37,6 +37,12 @@ export const appRoutes: Route[] = [
           import('./features/insumos/insumos').then((m) => m.InsumosPage),
       },
       {
+        path: 'inventario',
+        // Consulta visible a cualquier autenticado (el vendedor en modo lectura).
+        loadComponent: () =>
+          import('./features/inventario/inventario').then((m) => m.InventarioPage),
+      },
+      {
         path: 'compras',
         // Operación de costo: solo admin/super_admin.
         canActivate: [rolGuard('admin', 'super_admin')],

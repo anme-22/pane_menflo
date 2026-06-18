@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -8,11 +7,7 @@ import type { CompraDto } from '@pane/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConversionService } from '../unidades/conversion.service';
 import { SucursalesService } from '../sucursales/sucursales.service';
-import {
-  ESTRATEGIA_COSTEO,
-  EstrategiaCosteo,
-  SaldoCosteo,
-} from '../costeo/estrategia-costeo';
+import { InventarioService } from '../inventario/inventario.service';
 import { CrearCompraDto } from './dto/crear-compra.dto';
 import { toCompraDto } from './compra.mapper';
 
@@ -21,9 +16,9 @@ import { toCompraDto } from './compra.mapper';
  *  1) valida que la unidad de compra sea del mismo tipo que el insumo,
  *  2) convierte la cantidad a unidad base (vía ConversionService),
  *  3) calcula el costo por unidad base del lote (= costo total / cantidad base),
- *  4) actualiza la existencia con la estrategia de costeo (promedio ponderado),
- *     todo dentro de una transacción.
- * La estrategia se recibe por DI (abierto/cerrado): cambiarla no toca este código.
+ *  4) delega en InventarioService la entrada al stock (promedio ponderado) y el
+ *     asiento del movimiento de ENTRADA, todo dentro de una transacción.
+ * La lógica de costeo/inventario vive en InventarioService (DI, no se duplica).
  */
 @Injectable()
 export class ComprasService {
@@ -31,7 +26,7 @@ export class ComprasService {
     private readonly prisma: PrismaService,
     private readonly conversion: ConversionService,
     private readonly sucursales: SucursalesService,
-    @Inject(ESTRATEGIA_COSTEO) private readonly estrategia: EstrategiaCosteo,
+    private readonly inventario: InventarioService,
   ) {}
 
   /** Lista compras (todas o filtradas por insumo), más recientes primero. */
@@ -76,36 +71,7 @@ export class ComprasService {
     const fecha = dto.fecha ? new Date(dto.fecha) : new Date();
 
     const compra = await this.prisma.$transaction(async (tx) => {
-      const existente = await tx.existencia.findUnique({
-        where: { insumoId_sucursalId: { insumoId: dto.insumoId, sucursalId } },
-      });
-      const saldo: SaldoCosteo = existente
-        ? {
-            cantidadBase: Number(existente.cantidadBase),
-            costoPromedio: Number(existente.costoPromedio),
-          }
-        : { cantidadBase: 0, costoPromedio: 0 };
-
-      const nuevo = this.estrategia.aplicarEntrada(saldo, {
-        cantidadBase,
-        costoTotal: dto.costo,
-      });
-
-      await tx.existencia.upsert({
-        where: { insumoId_sucursalId: { insumoId: dto.insumoId, sucursalId } },
-        create: {
-          insumoId: dto.insumoId,
-          sucursalId,
-          cantidadBase: nuevo.cantidadBase,
-          costoPromedio: nuevo.costoPromedio,
-        },
-        update: {
-          cantidadBase: nuevo.cantidadBase,
-          costoPromedio: nuevo.costoPromedio,
-        },
-      });
-
-      return tx.compra.create({
+      const creada = await tx.compra.create({
         data: {
           insumoId: dto.insumoId,
           sucursalId,
@@ -118,6 +84,19 @@ export class ComprasService {
         },
         include: { insumo: true, unidadCompra: true },
       });
+
+      // Entrada al stock (promedio ponderado) + asiento del movimiento ENTRADA.
+      await this.inventario.registrarEntrada(tx, {
+        insumoId: dto.insumoId,
+        sucursalId,
+        cantidadBase,
+        costoTotal: dto.costo,
+        costoUnitario: costoPorUnidadBase,
+        compraId: creada.id,
+        fecha,
+      });
+
+      return creada;
     });
 
     return toCompraDto(compra);

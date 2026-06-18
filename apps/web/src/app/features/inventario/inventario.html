@@ -1,0 +1,251 @@
+<p-toast />
+
+<section class="mx-auto flex max-w-6xl flex-col gap-6">
+  <div>
+    <h1 class="text-2xl font-bold text-primary-600">Inventario</h1>
+    <p class="text-sm text-muted">Existencias, kardex de movimientos, cobertura y alertas.</p>
+  </div>
+
+  <!-- Alertas de stock bajo -->
+  @if (alertas().length > 0) {
+    <div
+      class="rounded-xl border border-primary-300 p-4"
+      style="background-color: var(--color-primary-50)"
+    >
+      <h2 class="mb-2 flex items-center gap-2 font-semibold text-primary-700">
+        <i class="pi pi-exclamation-triangle"></i> Stock bajo ({{ alertas().length }})
+      </h2>
+      <div class="flex flex-wrap gap-2">
+        @for (a of alertas(); track a.insumoId) {
+          <span class="rounded-md border border-primary-300 bg-white px-2 py-1 text-sm text-primary-800">
+            {{ a.insumoNombre }}: {{ a.equivalente }}
+            <span class="text-muted">(mín. {{ cantidadTexto(a.stockMinimo, a.unidadBaseAbrev) }})</span>
+          </span>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Existencias -->
+  <div>
+    <h2 class="mb-2 font-semibold">Existencias</h2>
+    <div
+      class="overflow-hidden rounded-xl border"
+      style="background-color: var(--surface-card); border-color: var(--surface-border)"
+    >
+      <p-table
+        [value]="existencias()"
+        [loading]="cargando()"
+        responsiveLayout="stack"
+        [breakpoint]="'640px'"
+      >
+        <ng-template pTemplate="header">
+          <tr>
+            <th>Insumo</th>
+            <th>Stock</th>
+            <th>En base</th>
+            <th>Costo prom.</th>
+            <th>Valor</th>
+            <th>Estado</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-s>
+          <tr>
+            <td><span class="p-column-title font-medium sm:hidden">Insumo </span>{{ s.insumoNombre }}</td>
+            <td><span class="p-column-title font-medium sm:hidden">Stock </span>{{ s.equivalente }}</td>
+            <td>
+              <span class="p-column-title font-medium sm:hidden">En base </span>
+              <span class="text-muted">{{ cantidadTexto(s.cantidadBase, s.unidadBaseAbrev) }}</span>
+            </td>
+            <td>
+              <span class="p-column-title font-medium sm:hidden">Costo prom. </span>
+              {{ dineroFinoTexto(s.costoPromedio, s.unidadBaseAbrev) }}
+            </td>
+            <td><span class="p-column-title font-medium sm:hidden">Valor </span>{{ dineroTexto(s.valor) }}</td>
+            <td>
+              <span class="p-column-title font-medium sm:hidden">Estado </span>
+              @if (s.bajoStock) {
+                <p-tag value="Bajo" severity="danger" />
+              } @else if (!s.activo) {
+                <p-tag value="Inactivo" severity="secondary" />
+              } @else {
+                <p-tag value="OK" severity="success" />
+              }
+            </td>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="emptymessage">
+          <tr><td colspan="6" class="p-4 text-center text-muted">No hay insumos todavía.</td></tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </div>
+
+  <!-- Kardex por insumo -->
+  <div>
+    <h2 class="mb-2 font-semibold">Kardex por insumo</h2>
+    <div class="mb-3 max-w-sm">
+      <p-select
+        [options]="opcionesInsumo()"
+        optionLabel="nombre"
+        optionValue="id"
+        [ngModel]="insumoKardexId()"
+        (ngModelChange)="verKardex($event)"
+        placeholder="Selecciona un insumo"
+        appendTo="body"
+        styleClass="w-full"
+        [filter]="true"
+        filterBy="nombre"
+      />
+    </div>
+
+    @if (cargandoKardex()) {
+      <p class="text-sm text-muted">Cargando kardex…</p>
+    } @else if (kardex(); as k) {
+      <div
+        class="overflow-hidden rounded-xl border"
+        style="background-color: var(--surface-card); border-color: var(--surface-border)"
+      >
+        <p-table [value]="k.movimientos" responsiveLayout="stack" [breakpoint]="'640px'">
+          <ng-template pTemplate="header">
+            <tr>
+              <th>Fecha</th>
+              <th>Tipo</th>
+              <th>Origen</th>
+              <th>Cantidad</th>
+              <th>Costo/u</th>
+              <th>Saldo</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-m>
+            <tr>
+              <td><span class="p-column-title font-medium sm:hidden">Fecha </span>{{ fechaTexto(m.fecha) }}</td>
+              <td>
+                <span class="p-column-title font-medium sm:hidden">Tipo </span>
+                <p-tag
+                  [value]="m.tipo === 'ENTRADA' ? 'Entrada' : (m.tipo === 'SALIDA' ? 'Salida' : 'Ajuste')"
+                  [severity]="m.tipo === 'ENTRADA' ? 'success' : (m.tipo === 'SALIDA' ? 'danger' : 'secondary')"
+                />
+              </td>
+              <td><span class="p-column-title font-medium sm:hidden">Origen </span>{{ m.origen }}</td>
+              <td>
+                <span class="p-column-title font-medium sm:hidden">Cantidad </span>
+                <span [class.text-primary-600]="m.signo < 0">
+                  {{ m.signo < 0 ? '−' : '+' }}{{ cantidadTexto(m.cantidadBase, k.unidadBaseAbrev) }}
+                </span>
+              </td>
+              <td>
+                <span class="p-column-title font-medium sm:hidden">Costo/u </span>
+                {{ dineroFinoTexto(m.costoUnitario, k.unidadBaseAbrev) }}
+              </td>
+              <td>
+                <span class="p-column-title font-medium sm:hidden">Saldo </span>
+                <span class="font-medium">{{ cantidadTexto(m.saldo, k.unidadBaseAbrev) }}</span>
+              </td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage">
+            <tr><td colspan="6" class="p-4 text-center text-muted">Sin movimientos para este insumo.</td></tr>
+          </ng-template>
+        </p-table>
+      </div>
+      <p class="mt-2 text-right text-sm text-muted">
+        Saldo final: <span class="font-medium">{{ cantidadTexto(k.saldoFinal, k.unidadBaseAbrev) }}</span>
+      </p>
+    }
+  </div>
+
+  <!-- Calculadora de cobertura -->
+  <div>
+    <h2 class="mb-2 font-semibold">Cobertura</h2>
+    <p class="mb-3 text-sm text-muted">¿Para cuántos días me alcanzan los insumos produciendo N lotes/día?</p>
+    <div class="flex flex-wrap items-end gap-3">
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-medium">Producto</label>
+        <p-select
+          [options]="opcionesProducto()"
+          optionLabel="etiqueta"
+          optionValue="productoId"
+          [ngModel]="coberturaProductoId()"
+          (ngModelChange)="coberturaProductoId.set($event)"
+          placeholder="Producto con receta"
+          appendTo="body"
+          styleClass="w-64"
+          emptyMessage="No hay productos con receta."
+        />
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-medium">Sacos / día</label>
+        <p-inputnumber
+          [ngModel]="coberturaSacos()"
+          (ngModelChange)="coberturaSacos.set($event)"
+          [min]="0"
+          [maxFractionDigits]="2"
+          styleClass="w-32"
+          inputStyleClass="w-full"
+        />
+      </div>
+      <p-button
+        label="Calcular"
+        icon="pi pi-calculator"
+        [loading]="calculandoCobertura()"
+        (onClick)="calcularCobertura()"
+      />
+    </div>
+
+    @if (cobertura(); as c) {
+      <div class="mt-4 flex flex-col gap-3">
+        <div
+          class="rounded-lg border px-3 py-2"
+          style="border-color: var(--surface-border)"
+        >
+          @if (c.diasCoberturaMin === null) {
+            <span class="text-muted">El escenario no consume insumos.</span>
+          } @else {
+            <span class="text-sm text-muted">Produciendo {{ c.sacosPorDia }} /día de {{ c.productoNombre }}: </span>
+            <span class="text-lg font-semibold text-primary-600">{{ diasTexto(c.diasCoberturaMin) }}</span>
+            @if (c.insumoLimitante) {
+              <span class="text-sm text-muted"> (limita: <span class="font-medium">{{ c.insumoLimitante }}</span>)</span>
+            }
+          }
+        </div>
+
+        <div
+          class="overflow-hidden rounded-xl border"
+          style="background-color: var(--surface-card); border-color: var(--surface-border)"
+        >
+          <p-table [value]="c.insumos" responsiveLayout="stack" [breakpoint]="'640px'">
+            <ng-template pTemplate="header">
+              <tr>
+                <th>Insumo</th>
+                <th>Stock</th>
+                <th>Consumo/día</th>
+                <th>Días</th>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="body" let-i>
+              <tr>
+                <td><span class="p-column-title font-medium sm:hidden">Insumo </span>{{ i.insumoNombre }}</td>
+                <td>
+                  <span class="p-column-title font-medium sm:hidden">Stock </span>
+                  {{ cantidadTexto(i.stockBase, i.unidadBaseAbrev) }}
+                </td>
+                <td>
+                  <span class="p-column-title font-medium sm:hidden">Consumo/día </span>
+                  {{ cantidadTexto(i.consumoDiarioBase, i.unidadBaseAbrev) }}
+                </td>
+                <td>
+                  <span class="p-column-title font-medium sm:hidden">Días </span>
+                  <span
+                    class="font-medium"
+                    [class.text-primary-600]="i.insumoNombre === c.insumoLimitante"
+                  >{{ diasTexto(i.diasCobertura) }}</span>
+                </td>
+              </tr>
+            </ng-template>
+          </p-table>
+        </div>
+      </div>
+    }
+  </div>
+</section>

@@ -10,6 +10,22 @@ import {
   SaldoCosteo,
 } from '../costeo/estrategia-costeo';
 
+/** Datos para registrar una entrada de inventario (compra). */
+export interface EntradaInventario {
+  insumoId: number;
+  sucursalId: number;
+  /** Cantidad que ingresa, en unidad base. */
+  cantidadBase: number;
+  /** Costo TOTAL del lote (para el promedio ponderado). */
+  costoTotal: number;
+  /** Costo por unidad base del lote (se asienta en el movimiento). */
+  costoUnitario: number;
+  /** Origen del movimiento (compra que lo genera). */
+  compraId: number;
+  /** Fecha del movimiento (por defecto, ahora). */
+  fecha?: Date;
+}
+
 /** Datos para registrar una salida de inventario (consumo). */
 export interface SalidaInventario {
   insumoId: number;
@@ -48,6 +64,68 @@ export class InventarioService {
   constructor(
     @Inject(ESTRATEGIA_COSTEO) private readonly estrategia: EstrategiaCosteo,
   ) {}
+
+  /**
+   * Suma una entrada al stock (promedio ponderado vía la estrategia) y asienta
+   * el movimiento de ENTRADA con origen la compra. Centraliza la mutación de
+   * inventario: ComprasService delega aquí en lugar de tocar `existencia`.
+   */
+  async registrarEntrada(
+    tx: Prisma.TransactionClient,
+    entrada: EntradaInventario,
+  ): Promise<number> {
+    const existente = await tx.existencia.findUnique({
+      where: {
+        insumoId_sucursalId: {
+          insumoId: entrada.insumoId,
+          sucursalId: entrada.sucursalId,
+        },
+      },
+    });
+    const saldo: SaldoCosteo = existente
+      ? {
+          cantidadBase: Number(existente.cantidadBase),
+          costoPromedio: Number(existente.costoPromedio),
+        }
+      : { cantidadBase: 0, costoPromedio: 0 };
+
+    const nuevo = this.estrategia.aplicarEntrada(saldo, {
+      cantidadBase: entrada.cantidadBase,
+      costoTotal: entrada.costoTotal,
+    });
+
+    await tx.existencia.upsert({
+      where: {
+        insumoId_sucursalId: {
+          insumoId: entrada.insumoId,
+          sucursalId: entrada.sucursalId,
+        },
+      },
+      create: {
+        insumoId: entrada.insumoId,
+        sucursalId: entrada.sucursalId,
+        cantidadBase: nuevo.cantidadBase,
+        costoPromedio: nuevo.costoPromedio,
+      },
+      update: {
+        cantidadBase: nuevo.cantidadBase,
+        costoPromedio: nuevo.costoPromedio,
+      },
+    });
+
+    const movimiento = await tx.movimientoInventario.create({
+      data: {
+        insumoId: entrada.insumoId,
+        sucursalId: entrada.sucursalId,
+        tipo: TipoMovimiento.ENTRADA,
+        cantidadBase: entrada.cantidadBase,
+        costoUnitario: entrada.costoUnitario,
+        compraId: entrada.compraId,
+        fecha: entrada.fecha ?? new Date(),
+      },
+    });
+    return movimiento.id;
+  }
 
   /**
    * Descuenta `cantidadBase` del insumo en la sucursal dada y registra el

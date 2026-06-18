@@ -22,6 +22,7 @@ export function toInsumoDto(
       cantidadBase: ex ? ex.cantidadBase.toString() : '0',
       costoPromedio: ex ? ex.costoPromedio.toString() : '0',
     },
+    stockMinimo: insumo.stockMinimo.toString(),
     creadoEn: insumo.creadoEn.toISOString(),
     actualizadoEn: insumo.actualizadoEn.toISOString(),
   };

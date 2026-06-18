@@ -43,17 +43,17 @@ export class InsumosService {
   /** Crea un insumo (sin existencia: el stock entra con la primera compra). */
   async crear(dto: CrearInsumoDto): Promise<InsumoDto> {
     const insumo = await this.prisma.insumo.create({
-      data: { nombre: dto.nombre, tipo: dto.tipo },
+      data: { nombre: dto.nombre, tipo: dto.tipo, stockMinimo: dto.stockMinimo ?? 0 },
     });
     return this.obtener(insumo.id);
   }
 
-  /** Actualiza el nombre del insumo (el tipo no cambia). */
+  /** Actualiza nombre y/o umbral de stock del insumo (el tipo no cambia). */
   async actualizar(id: number, dto: ActualizarInsumoDto): Promise<InsumoDto> {
     await this.asegurarExiste(id);
     await this.prisma.insumo.update({
       where: { id },
-      data: { nombre: dto.nombre },
+      data: { nombre: dto.nombre, stockMinimo: dto.stockMinimo },
     });
     return this.obtener(id);
   }

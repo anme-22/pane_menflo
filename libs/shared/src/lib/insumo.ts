@@ -39,6 +39,8 @@ export interface InsumoDto {
   tipo: TipoUnidad;
   activo: boolean;
   existencia: ExistenciaResumen;
+  /** Umbral de stock bajo en unidad base (0 = sin alerta). */
+  stockMinimo: string;
   creadoEn: string;
   actualizadoEn: string;
 }
@@ -47,11 +49,15 @@ export interface InsumoDto {
 export interface CrearInsumoRequest {
   nombre: string;
   tipo: TipoUnidad;
+  /** Umbral de stock bajo en unidad base (opcional; default 0). */
+  stockMinimo?: number;
 }
 
 /** Actualizar insumo (el tipo no cambia para no romper el stock guardado). */
 export interface ActualizarInsumoRequest {
   nombre?: string;
+  /** Umbral de stock bajo en unidad base (0 = sin alerta). */
+  stockMinimo?: number;
 }
 
 /** Compra (lote) tal como la expone la API. */
