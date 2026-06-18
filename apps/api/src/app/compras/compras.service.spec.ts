@@ -1,13 +1,15 @@
 import { ComprasService } from './compras.service';
+import { InventarioService } from '../inventario/inventario.service';
 import { CostoPromedioPonderadoStrategy } from '../costeo/costo-promedio-ponderado.strategy';
 
 /**
- * Verifica el cálculo del costo por unidad base y la actualización de la
- * existencia (promedio ponderado) al registrar una compra. La conversión se
- * mockea (su lógica se prueba en ConversionService).
+ * Verifica el cálculo del costo por unidad base y que la compra delega la
+ * entrada en InventarioService (existencia con promedio ponderado + movimiento
+ * ENTRADA). La conversión se mockea (su lógica se prueba en ConversionService);
+ * InventarioService es real para cubrir la integración.
  */
 describe('ComprasService.crear', () => {
-  it('convierte a base, calcula costo/unidad base y actualiza la existencia', async () => {
+  it('convierte a base, calcula costo/u base y registra la entrada al stock', async () => {
     const insumo = { id: 1, nombre: 'Harina', tipo: 'peso', activo: true };
 
     const conversion = {
@@ -17,15 +19,7 @@ describe('ComprasService.crear', () => {
     };
     const sucursales = { obtenerDefaultId: jest.fn().mockResolvedValue(1) };
 
-    let upsertArgs: { create: { cantidadBase: number; costoPromedio: number } };
     const tx = {
-      existencia: {
-        findUnique: jest.fn().mockResolvedValue(null), // primera compra
-        upsert: jest.fn().mockImplementation((a) => {
-          upsertArgs = a;
-          return Promise.resolve();
-        }),
-      },
       compra: {
         create: jest.fn().mockImplementation((a) =>
           Promise.resolve({
@@ -42,17 +36,25 @@ describe('ComprasService.crear', () => {
           }),
         ),
       },
+      existencia: {
+        findUnique: jest.fn().mockResolvedValue(null), // primera compra
+        upsert: jest.fn().mockResolvedValue(undefined),
+      },
+      movimientoInventario: {
+        create: jest.fn().mockImplementation((a) => Promise.resolve({ id: 99, ...a.data })),
+      },
     };
     const prisma = {
       insumo: { findUnique: jest.fn().mockResolvedValue(insumo) },
       $transaction: (cb: (t: typeof tx) => unknown) => cb(tx),
     };
 
+    const inventario = new InventarioService(new CostoPromedioPonderadoStrategy());
     const service = new ComprasService(
       prisma as never,
       conversion as never,
       sucursales as never,
-      new CostoPromedioPonderadoStrategy(),
+      inventario,
     );
 
     const res = await service.crear({
@@ -67,8 +69,15 @@ describe('ComprasService.crear', () => {
     expect(Number(res.costoPorUnidadBase)).toBeCloseTo(6000 / 90718.4, 6);
 
     // existencia: primera compra -> cantidad y promedio del lote
+    const upsertArgs = tx.existencia.upsert.mock.calls[0][0];
     expect(Number(upsertArgs.create.cantidadBase)).toBeCloseTo(90718.4, 4);
     expect(Number(upsertArgs.create.costoPromedio)).toBeCloseTo(6000 / 90718.4, 6);
+
+    // se asienta un movimiento de ENTRADA con origen = la compra
+    const movData = tx.movimientoInventario.create.mock.calls[0][0].data;
+    expect(movData.tipo).toBe('ENTRADA');
+    expect(movData.compraId).toBe(10);
+    expect(Number(movData.cantidadBase)).toBeCloseTo(90718.4, 4);
   });
 
   it('rechaza si la unidad de compra no es del tipo del insumo', async () => {
@@ -82,7 +91,7 @@ describe('ComprasService.crear', () => {
       prisma as never,
       conversion as never,
       { obtenerDefaultId: jest.fn() } as never,
-      new CostoPromedioPonderadoStrategy(),
+      new InventarioService(new CostoPromedioPonderadoStrategy()),
     );
 
     await expect(

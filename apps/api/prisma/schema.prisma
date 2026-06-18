@@ -160,6 +160,8 @@ model Insumo {
   nombre        String     @db.VarChar(150)
   tipo          TipoUnidad
   activo        Boolean    @default(true)
+  // Umbral de stock bajo (en unidad base). 0 = sin alerta (Feature 8).
+  stockMinimo   Decimal    @default(0) @map("stock_minimo") @db.Decimal(18, 4)
   creadoEn      DateTime   @default(now()) @map("creado_en")
   actualizadoEn DateTime   @updatedAt @map("actualizado_en")
 
@@ -188,9 +190,10 @@ model Compra {
   costoPorUnidadBase Decimal  @map("costo_por_unidad_base") @db.Decimal(18, 6)
   creadoEn           DateTime @default(now()) @map("creado_en")
 
-  insumo       Insumo       @relation(fields: [insumoId], references: [id])
-  unidadCompra UnidadMedida @relation(fields: [unidadCompraId], references: [id])
-  sucursal     Sucursal     @relation(fields: [sucursalId], references: [id])
+  insumo       Insumo                 @relation(fields: [insumoId], references: [id])
+  unidadCompra UnidadMedida           @relation(fields: [unidadCompraId], references: [id])
+  sucursal     Sucursal               @relation(fields: [sucursalId], references: [id])
+  movimientos  MovimientoInventario[]
 
   @@index([insumoId])
   @@map("compra")
@@ -291,11 +294,12 @@ model OrdenProduccion {
   @@schema("public")
 }
 
-/// Movimiento de inventario (Feature 7). Asiento inmutable del kardex: NUNCA se
-/// borra. Hoy solo se generan SALIDAs al confirmar producción (origen =
-/// `ordenProduccionId`). `cantidadBase` es la magnitud consumida en unidad base
-/// y `costoUnitario` el costo promedio vigente al momento del movimiento.
-/// ENTRADA (compras) y AJUSTE se sumarán en la Feature 8 (kardex/cobertura).
+/// Movimiento de inventario (Feature 7+8). Asiento inmutable del kardex: NUNCA se
+/// borra. ENTRADA proviene de una compra (origen = `compraId`); SALIDA proviene
+/// de confirmar producción (origen = `ordenProduccionId`). `cantidadBase` es la
+/// magnitud (positiva) en unidad base y `costoUnitario` el costo por unidad base
+/// del movimiento (costo del lote en entradas; promedio vigente en salidas).
+/// AJUSTE queda reservado. El tipo indica el signo al reconstruir el saldo.
 model MovimientoInventario {
   id                Int            @id @default(autoincrement())
   insumoId          Int            @map("insumo_id")
@@ -304,15 +308,18 @@ model MovimientoInventario {
   cantidadBase      Decimal        @map("cantidad_base") @db.Decimal(18, 4)
   costoUnitario     Decimal        @map("costo_unitario") @db.Decimal(18, 6)
   ordenProduccionId Int?           @map("orden_produccion_id")
+  compraId          Int?           @map("compra_id")
   fecha             DateTime       @default(now())
   creadoEn          DateTime       @default(now()) @map("creado_en")
 
   insumo          Insumo           @relation(fields: [insumoId], references: [id])
   sucursal        Sucursal         @relation(fields: [sucursalId], references: [id])
   ordenProduccion OrdenProduccion? @relation(fields: [ordenProduccionId], references: [id])
+  compra          Compra?          @relation(fields: [compraId], references: [id])
 
   @@index([insumoId, sucursalId])
   @@index([ordenProduccionId])
+  @@index([compraId])
   @@map("movimiento_inventario")
   @@schema("public")
 }

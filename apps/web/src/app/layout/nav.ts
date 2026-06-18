@@ -22,6 +22,8 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Clientes', icon: 'pi pi-id-card', route: '/clientes' },
   // Insumos: visible a todos (el vendedor ve el inventario en consulta).
   { label: 'Insumos', icon: 'pi pi-inbox', route: '/insumos' },
+  // Inventario: consulta para todos (existencias, kardex, cobertura, alertas).
+  { label: 'Inventario', icon: 'pi pi-chart-bar', route: '/inventario' },
   // Compras: operación de costo, solo admin/super_admin.
   { label: 'Compras', icon: 'pi pi-shopping-cart', route: '/compras', roles: ['admin', 'super_admin'] },
   // Recetas: gestión del negocio, solo admin/super_admin.

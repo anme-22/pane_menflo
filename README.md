@@ -4,7 +4,7 @@ Monorepo (Nx) para la gestión de una panadería: facturación, inventario,
 recetas, producción y reportes. Backend en **NestJS + Prisma**, frontend en
 **Angular + PrimeNG + Tailwind**, base de datos **PostgreSQL**.
 
-> Estado actual: **Feature 7 — Producción** (ver `CLAUDE.md §10`).
+> Estado actual: **Feature 8 — Inventario / existencias** (ver `CLAUDE.md §10`).
 
 ## Stack
 
@@ -198,6 +198,27 @@ docker exec pane-postgres rm /tmp/censo.sql
 > El kardex detallado, la cobertura en días y las alertas de stock bajo llegan en
 > la Feature 8 (Inventario / existencias).
 
+## Inventario / existencias (Feature 8)
+
+Capa de **consulta** (solo lectura) sobre el stock de **insumos**: la gestionan
+los **tres roles** (el vendedor en modo consulta).
+
+- **Existencias:** stock actual de cada insumo en unidad base, con su equivalente
+  legible (g→kg, ml→L), costo promedio, valor y bandera de **stock bajo**.
+- **Kardex por insumo:** todos los movimientos — **ENTRADA** (compras) y **SALIDA**
+  (producción) — con fecha, origen ("Compra #N" / "Producción #N"), cantidad,
+  costo y **saldo acumulado** (el saldo final cuadra con la existencia).
+- **Cobertura:** "¿para cuántos días me alcanzan los insumos produciendo *N*
+  sacos/día de *X*?" → `días = stock_base ÷ consumo_diario_base` por insumo de la
+  receta; resalta el **insumo limitante** (el que se agota primero).
+- **Alertas:** insumos por debajo de su **umbral** (`stock_minimo`, configurable
+  por insumo en la pantalla de Insumos; 0 = sin alerta).
+- Los **movimientos no se borran**. Las **compras** registran su movimiento de
+  ENTRADA automáticamente; la migración de F8 hace **backfill** de las compras
+  previas para que el kardex incluya el histórico.
+- Endpoints: `GET /api/inventario/existencias`, `GET /api/inventario/alertas`,
+  `GET /api/inventario/kardex/:insumoId`, `POST /api/inventario/cobertura`.
+
 ## Scripts útiles
 
 | Script                      | Qué hace                                            |
@@ -233,7 +254,7 @@ docker exec pane-postgres rm /tmp/censo.sql
 │   │       ├── compras/     # lotes + costo promedio ponderado
 │   │       ├── costeo/      # estrategia de costeo (interfaz + promedio + módulo)
 │   │       ├── recetas/     # recetas + costo por bolsa
-│   │       ├── inventario/  # salida de stock + movimientos (base del kardex)
+│   │       ├── inventario/  # entrada/salida de stock + movimientos + consulta (kardex, cobertura, alertas)
 │   │       └── produccion/  # órdenes: confirmar, descontar, merma, costo
 │   └── web/                 # Angular (PrimeNG + Tailwind)
 │       └── src/
@@ -241,7 +262,7 @@ docker exec pane-postgres rm /tmp/censo.sql
 │           └── app/
 │               ├── core/auth/        # AuthService, interceptor y guards
 │               ├── layout/           # shell (barra + navegación por rol)
-│               ├── features/         # login, inicio, usuarios, productos, clientes, insumos, compras, recetas, produccion
+│               ├── features/         # login, inicio, usuarios, productos, clientes, insumos, compras, recetas, produccion, inventario
 │               └── theme/            # ThemeService + preset de PrimeNG
 ├── libs/
 │   └── shared/              # tipos/DTOs compartidos (@pane/shared)

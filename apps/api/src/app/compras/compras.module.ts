@@ -1,17 +1,17 @@
 import { Module } from '@nestjs/common';
 import { UnidadesModule } from '../unidades/unidades.module';
 import { SucursalesModule } from '../sucursales/sucursales.module';
-import { CosteoModule } from '../costeo/costeo.module';
+import { InventarioModule } from '../inventario/inventario.module';
 import { ComprasController } from './compras.controller';
 import { ComprasService } from './compras.service';
 
 /**
  * Módulo de compras. Recibe ConversionService (UnidadesModule), SucursalesService
- * (SucursalesModule) y la estrategia de costeo (CosteoModule, por token) por DI.
- * Cambiar la estrategia no toca a ComprasService.
+ * (SucursalesModule) e InventarioService (InventarioModule) por DI. La entrada al
+ * stock y el asiento del movimiento de ENTRADA los hace InventarioService.
  */
 @Module({
-  imports: [UnidadesModule, SucursalesModule, CosteoModule],
+  imports: [UnidadesModule, SucursalesModule, InventarioModule],
   controllers: [ComprasController],
   providers: [ComprasService],
 })

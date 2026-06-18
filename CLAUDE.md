@@ -520,7 +520,39 @@ ocultamiento de UI por rol en Angular.
       rollback, anular con/sin motivo, 401 sin token, movimientos NO se borran] y UI
       [alta con 400 en vivo, orden en lista]; tests api[+4: valorarSalida, salida de
       inventario, crear/idempotencia] + web[+4: produccion service] verdes.)
-- [ ] Feature 8 — Inventario / existencias
+- [x] Feature 8 — Inventario / existencias
+      (Capa de CONSULTA sobre existencias (F5) y movimientos (compras/producción).
+      Prisma: se añadió `insumo.stock_minimo` Decimal(18,4) default 0 [umbral de
+      alerta, editable en la pantalla de Insumos] y `movimiento_inventario.compra_id`
+      [origen de las ENTRADA]. MIGRACIÓN con BACKFILL: asienta una ENTRADA por cada
+      compra existente [INSERT…SELECT idempotente] para que el kardex incluya el
+      histórico de F5. Sin drift del censo. Backend: se EXTENDIÓ la interfaz de
+      costeo NO [eso fue F7]; aquí ComprasService DELEGA su mutación de inventario
+      en InventarioService.registrarEntrada [upsert de existencia con promedio
+      ponderado + asiento ENTRADA], centralizando la escritura de movimientos [ya no
+      duplica la lógica; compras quedó más delgado]. ConsultaInventarioService
+      [SOLID-S, solo lectura, reutiliza ConversionService y sucursal default]:
+      existencias [stock en base + equivalente legible g/kg·ml/L·u + costo/valor +
+      bandera bajoStock], kardex/:insumoId [movimientos en orden con saldo acumulado
+      y origen "Compra #/Producción #"; el saldo final cuadra con la existencia],
+      cobertura [POST {productoId, sacosPorDia}: días = stock_base ÷ consumo_diario_
+      base por insumo de la receta; devuelve el mínimo y el insumo limitante],
+      alertas [insumos con stockMinimo>0 y stock<umbral]. Endpoints GET
+      /inventario/existencias|alertas|kardex/:id y POST /inventario/cobertura; SOLO
+      JwtAuthGuard [los 3 roles consultan; el vendedor en lectura]. libs/shared:
+      StockDto, MovimientoKardexDto/KardexDto, Cobertura(Request|InsumoDto|
+      ResultadoDto), AlertaStockDto; +stockMinimo en InsumoDto/Crear/Actualizar. Web:
+      /inventario en NAV_ITEMS [todos], 4 vistas [existencias, panel de alertas,
+      kardex por insumo con saldo, calculadora de cobertura] tabla→tarjetas, zoneless
+      con signals+ngModel; +campo stockMinimo en el formulario de Insumos. Verificado
+      contra BD [e2e 15/15: stock = entrada−salida (88450.44), equivalente kg,
+      bajoStock, kardex 2 mov con origen Compra/Producción y saldo que cuadra,
+      cobertura 19.5 días con insumo limitante, sin receta 400, alertas, 401] y UI
+      [4 vistas, captura]; backfill verificado [1 compra→1 ENTRADA] y compras ahora
+      asienta ENTRADA automáticamente. NOTA: la merma de PRODUCTO TERMINADO [pan que
+      se pudre/pierde] NO se cubre aquí [el inventario es de insumos]; queda como
+      feature futura. tests api[+5: kardex, cobertura, equivalente, bajoStock; compras
+      spec actualizado] + web[+4: inventario service] verdes.)
 - [ ] Feature 9 — Facturación
 - [ ] Feature 10 — Reportes y ganancias
 - [ ] Feature 11 — Deploy

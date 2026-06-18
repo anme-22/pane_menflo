@@ -7,6 +7,7 @@ import {
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
+import { InputNumberModule } from 'primeng/inputnumber';
 import { MessageService } from 'primeng/api';
 import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
@@ -45,6 +46,7 @@ const dineroFino = new Intl.NumberFormat('es-HN', {
     ButtonModule,
     DialogModule,
     InputTextModule,
+    InputNumberModule,
     SelectModule,
     TagModule,
     ToastModule,
@@ -76,6 +78,7 @@ export class InsumosPage implements OnInit {
   protected readonly form = this.fb.group({
     nombre: ['', [Validators.required, Validators.minLength(2)]],
     tipo: ['peso' as TipoUnidad, [Validators.required]],
+    stockMinimo: [0 as number, [Validators.min(0)]],
   });
 
   ngOnInit(): void {
@@ -98,14 +101,14 @@ export class InsumosPage implements OnInit {
 
   abrirNuevo(): void {
     this.editandoId.set(null);
-    this.form.reset({ nombre: '', tipo: 'peso' });
+    this.form.reset({ nombre: '', tipo: 'peso', stockMinimo: 0 });
     this.form.controls.tipo.enable();
     this.formVisible.set(true);
   }
 
   abrirEdicion(i: InsumoDto): void {
     this.editandoId.set(i.id);
-    this.form.reset({ nombre: i.nombre, tipo: i.tipo });
+    this.form.reset({ nombre: i.nombre, tipo: i.tipo, stockMinimo: Number(i.stockMinimo) });
     // El tipo define la unidad base del stock guardado: no se cambia.
     this.form.controls.tipo.disable();
     this.formVisible.set(true);
@@ -121,13 +124,20 @@ export class InsumosPage implements OnInit {
     const v = this.form.getRawValue();
 
     if (id === null) {
-      const data: CrearInsumoRequest = { nombre: v.nombre, tipo: v.tipo };
+      const data: CrearInsumoRequest = {
+        nombre: v.nombre,
+        tipo: v.tipo,
+        stockMinimo: v.stockMinimo ?? 0,
+      };
       this.service.crear(data).subscribe({
         next: () => this.alGuardar('Insumo creado.'),
         error: (e) => this.alFallar(e),
       });
     } else {
-      const data: ActualizarInsumoRequest = { nombre: v.nombre };
+      const data: ActualizarInsumoRequest = {
+        nombre: v.nombre,
+        stockMinimo: v.stockMinimo ?? 0,
+      };
       this.service.actualizar(id, data).subscribe({
         next: () => this.alGuardar('Insumo actualizado.'),
         error: (e) => this.alFallar(e),
