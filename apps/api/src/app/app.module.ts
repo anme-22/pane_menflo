@@ -15,6 +15,9 @@ import { ComprasModule } from './compras/compras.module';
 import { RecetasModule } from './recetas/recetas.module';
 import { InventarioModule } from './inventario/inventario.module';
 import { ProduccionModule } from './produccion/produccion.module';
+import { ConfiguracionModule } from './configuracion/configuracion.module';
+import { ImpuestoModule } from './impuesto/impuesto.module';
+import { FacturasModule } from './facturas/facturas.module';
 
 @Module({
   imports: [
@@ -33,6 +36,9 @@ import { ProduccionModule } from './produccion/produccion.module';
     RecetasModule,
     InventarioModule,
     ProduccionModule,
+    ConfiguracionModule,
+    ImpuestoModule,
+    FacturasModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -64,6 +64,12 @@ export const appRoutes: Route[] = [
           import('./features/produccion/produccion').then((m) => m.ProduccionPage),
       },
       {
+        path: 'facturas',
+        // Venta: cualquier autenticado (el vendedor incluido).
+        loadComponent: () =>
+          import('./features/facturas/facturas').then((m) => m.FacturasPage),
+      },
+      {
         path: 'usuarios',
         // Solo super_admin (además de ocultarse en la UI).
         canActivate: [rolGuard('super_admin')],

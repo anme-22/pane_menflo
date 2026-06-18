@@ -553,7 +553,37 @@ ocultamiento de UI por rol en Angular.
       se pudre/pierde] NO se cubre aquí [el inventario es de insumos]; queda como
       feature futura. tests api[+5: kardex, cobertura, equivalente, bajoStock; compras
       spec actualizado] + web[+4: inventario service] verdes.)
-- [ ] Feature 9 — Facturación
+- [x] Feature 9 — Facturación
+      (Depende de productos+precios (F3) y clientes (F4). Prisma: enums EstadoFactura
+      (BORRADOR/EMITIDA/ANULADA) y TipoPago (CONTADO/CREDITO); `configuracion` [fila
+      única sembrada: isvActivo, tasaIsv, facturacionFiscalActiva, cai*, pinEdicionActivo
+      — todas apagadas; edición en F12]; `factura` [sucursalId default, clienteIdentidad?
+      OPCIONAL (consumidor final), usuarioId (quién), estado, tipoPago, subtotal/impuesto/
+      total guardados al emitir, campos fiscales cai/numero nullable apagados por bandera,
+      motivoAnulacion?, emitidaEn?]; `factura_detalle` [SNAPSHOT nombreProducto +
+      precioUnitario; tasaImpuesto por línea default 0; cascade]; `abono`; `factura_bitacora`
+      [quién/cuándo/campo/valorAnterior/valorNuevo/motivo]. Migración con CHECKs (montos≥0,
+      cantidad>0, tasa∈[0,1], abono>0). Backend (SOLID): EstrategiaImpuesto tras interfaz +
+      token (ImpuestoModule) → impuesto por línea; FacturasService [crear/editar/emitir/anular/
+      abonar] con el snapshot tomado del precio vigente al construir las líneas; calculo-pago
+      (función pura): saldo y estadoPago (PENDIENTE/PARCIAL/PAGADA) CALCULADOS desde los abonos
+      (contado emitida = PAGADA); BitacoraService escribe el rastro al emitir/editar-emitida/
+      anular dentro de la transacción. Editar una EMITIDA exige motivo (una fila de bitácora
+      por campo); BORRADOR libre; ANULADA terminal; nada se borra. PIN apagado, no implementado.
+      ConfiguracionService (lectura) + GET /configuracion. Endpoints GET /facturas[/:id], POST,
+      PATCH :id, POST :id/{emitir,anular,abonos}; todos los roles (vendedor incluido), autoría
+      por @CurrentUser. libs/shared: Factura/Detalle/Abono/Bitacora DTOs, ConfiguracionDto,
+      enums+labels, DTOs crear/editar/anular/abono. Web: /facturas en NAV_ITEMS [todos]; lista
+      con Tag de estado/pago, editor (cliente opcional + líneas FormArray + totales en vivo,
+      zoneless), emitir (confirm), anular con motivo, abonos con saldo/estado recalculados, y
+      detalle imprimible (window.open). Verificado contra BD [e2e 21/21: snapshot (cambiar
+      precio NO altera la factura, total queda 60), contado emitida PAGADA, impuesto por línea
+      50→7.5→57.5, editar emitida sin motivo 400 / con motivo deja bitácora, abonos 60→PARCIAL
+      saldo 40 →PAGADA, sobrepago 400, anular sin/ con motivo, no se borra, 401] y UI [factura
+      200×L2=L400 con snapshot, emitida; captura]. NOTA del dominio: una masa que produce VARIOS
+      productos / costo por bolsa real es una revisión futura de Producción; no afecta a
+      Facturación (cada variante es un producto+precio). tests api[+9: impuesto, calculo-pago,
+      reglas de estado] + web[+4: facturas service] verdes.)
 - [ ] Feature 10 — Reportes y ganancias
 - [ ] Feature 11 — Deploy
 - [ ] Feature 12 — Configuración

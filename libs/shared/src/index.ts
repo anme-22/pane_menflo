@@ -6,3 +6,5 @@ export * from './lib/insumo';
 export * from './lib/receta';
 export * from './lib/produccion';
 export * from './lib/inventario';
+export * from './lib/configuracion';
+export * from './lib/factura';

@@ -53,6 +53,16 @@ async function main() {
     console.log('• Sucursal por defecto ya existente, se omite.');
   }
 
+  // Configuración del sistema: fila única con las banderas (todas apagadas hoy).
+  // Solo se crea si aún no existe (no se pisa lo que el admin ajuste luego en F12).
+  const yaHayConfig = await prisma.configuracion.findFirst();
+  if (!yaHayConfig) {
+    await prisma.configuracion.create({ data: {} });
+    console.log('✓ Configuración por defecto creada (ISV/fiscal/PIN apagados).');
+  } else {
+    console.log('• Configuración ya existente, se omite.');
+  }
+
   // Super admin inicial: solo se crea si todavía no existe ningún super_admin.
   // Las credenciales vienen del .env para no hardcodear secretos.
   const yaHaySuperAdmin = await prisma.usuario.findFirst({

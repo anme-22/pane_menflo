@@ -1,0 +1,315 @@
+<p-toast />
+<p-confirmDialog />
+
+<section class="mx-auto max-w-6xl">
+  <div class="mb-4 flex items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-primary-600">Facturas</h1>
+      <p class="text-sm text-muted">Ventas con snapshot de precio, abonos e impresión.</p>
+    </div>
+    <p-button label="Nueva factura" icon="pi pi-plus" (onClick)="abrirNueva()" />
+  </div>
+
+  <div
+    class="overflow-hidden rounded-xl border"
+    style="background-color: var(--surface-card); border-color: var(--surface-border)"
+  >
+    <p-table
+      [value]="facturas()"
+      [loading]="cargando()"
+      [paginator]="facturas().length > 12"
+      [rows]="12"
+      responsiveLayout="stack"
+      [breakpoint]="'640px'"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>#</th>
+          <th>Fecha</th>
+          <th>Cliente</th>
+          <th>Estado</th>
+          <th>Pago</th>
+          <th>Total</th>
+          <th>Saldo</th>
+          <th class="text-right">Acciones</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-f>
+        <tr>
+          <td><span class="p-column-title font-medium sm:hidden">#</span>{{ f.numero ?? f.id }}</td>
+          <td><span class="p-column-title font-medium sm:hidden">Fecha </span>{{ fechaTexto(f.fecha) }}</td>
+          <td><span class="p-column-title font-medium sm:hidden">Cliente </span>{{ f.clienteNombre ?? 'Consumidor final' }}</td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Estado </span>
+            <p-tag [value]="estadoLabel(f.estado)" [severity]="sevEstado(f.estado)" />
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Pago </span>
+            {{ tipoPagoLabel(f.tipoPago) }}
+            <p-tag class="ml-1" [value]="pagoLabel(f.estadoPago)" [severity]="sevPago(f.estadoPago)" />
+          </td>
+          <td><span class="p-column-title font-medium sm:hidden">Total </span>{{ dineroTexto(f.total) }}</td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Saldo </span>
+            <span [class.text-primary-600]="f.estadoPago !== 'PAGADA'">{{ dineroTexto(f.saldoPendiente) }}</span>
+          </td>
+          <td class="text-right whitespace-nowrap">
+            <p-button icon="pi pi-eye" severity="secondary" [text]="true" [rounded]="true" ariaLabel="Ver" (onClick)="verDetalle(f)" />
+            @if (f.estado !== 'ANULADA') {
+              <p-button icon="pi pi-pencil" severity="secondary" [text]="true" [rounded]="true" ariaLabel="Editar" (onClick)="abrirEdicion(f)" />
+            }
+            @if (f.estado === 'BORRADOR') {
+              <p-button icon="pi pi-check" severity="success" [text]="true" [rounded]="true" ariaLabel="Emitir" (onClick)="emitir(f)" />
+            }
+            @if (f.estado === 'EMITIDA' && f.tipoPago === 'CREDITO') {
+              <p-button icon="pi pi-wallet" severity="secondary" [text]="true" [rounded]="true" ariaLabel="Abonar" (onClick)="abrirAbono(f)" />
+            }
+            @if (f.estado !== 'ANULADA') {
+              <p-button icon="pi pi-ban" severity="danger" [text]="true" [rounded]="true" ariaLabel="Anular" (onClick)="abrirAnular(f)" />
+            }
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr><td colspan="8" class="p-4 text-center text-muted">No hay facturas todavía.</td></tr>
+      </ng-template>
+    </p-table>
+  </div>
+</section>
+
+<!-- Editor: crear / editar -->
+<p-dialog
+  [visible]="formVisible()"
+  (visibleChange)="formVisible.set($event)"
+  [modal]="true"
+  [style]="{ width: '46rem' }"
+  [header]="editandoId() === null ? 'Nueva factura' : 'Editar factura'"
+  [dismissableMask]="true"
+>
+  <form [formGroup]="form" (ngSubmit)="guardar()" class="flex flex-col gap-4 pt-2">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div class="flex flex-col gap-1">
+        <label for="cliente" class="text-sm font-medium">Cliente (opcional)</label>
+        <p-select
+          inputId="cliente"
+          formControlName="clienteIdentidad"
+          [options]="clientesOpciones()"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Consumidor final"
+          [showClear]="true"
+          [filter]="true"
+          filterBy="label"
+          appendTo="body"
+          styleClass="w-full"
+        />
+      </div>
+      <div class="flex flex-col gap-1">
+        <label for="tipoPago" class="text-sm font-medium">Tipo de pago</label>
+        <p-select
+          inputId="tipoPago"
+          formControlName="tipoPago"
+          [options]="tiposPago"
+          optionLabel="label"
+          optionValue="value"
+          appendTo="body"
+          styleClass="w-full"
+        />
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <span class="text-sm font-medium">Líneas</span>
+      @for (grupo of items.controls; track $index; let i = $index) {
+        <div [formGroup]="$any(grupo)" class="grid grid-cols-12 items-center gap-2">
+          <div class="col-span-12 sm:col-span-5">
+            <p-select
+              formControlName="productoId"
+              [options]="productosActivos()"
+              optionLabel="nombre"
+              optionValue="id"
+              placeholder="Producto"
+              [filter]="true"
+              filterBy="nombre"
+              appendTo="body"
+              styleClass="w-full"
+            />
+          </div>
+          <div class="col-span-4 sm:col-span-2">
+            <p-inputnumber formControlName="cantidad" [min]="0" [maxFractionDigits]="2" placeholder="Cant." styleClass="w-full" inputStyleClass="w-full" />
+          </div>
+          <div class="col-span-4 sm:col-span-2">
+            <p-inputnumber formControlName="tasaImpuesto" [min]="0" [max]="1" [maxFractionDigits]="4" placeholder="Tasa" styleClass="w-full" inputStyleClass="w-full" />
+          </div>
+          <div class="col-span-3 sm:col-span-2 text-right text-sm text-muted">
+            {{ dineroTexto(precioDe(grupo.value.productoId) * (grupo.value.cantidad || 0)) }}
+          </div>
+          <div class="col-span-1 flex justify-end">
+            <p-button icon="pi pi-trash" severity="danger" [text]="true" [rounded]="true" ariaLabel="Quitar" [disabled]="items.length === 1" (onClick)="quitarLinea(i)" />
+          </div>
+        </div>
+      }
+      <p-button label="Agregar línea" icon="pi pi-plus" severity="secondary" [text]="true" size="small" (onClick)="agregarLinea()" />
+    </div>
+
+    @if (totales(); as t) {
+      <div class="flex flex-col gap-1 rounded-lg border px-3 py-2 text-sm" style="border-color: var(--surface-border)">
+        <div class="flex justify-between text-muted"><span>Subtotal</span><span>{{ dineroTexto(t.subtotal) }}</span></div>
+        <div class="flex justify-between text-muted"><span>Impuesto</span><span>{{ dineroTexto(t.impuesto) }}</span></div>
+        <div class="flex justify-between font-semibold text-primary-600"><span>Total</span><span>{{ dineroTexto(t.total) }}</span></div>
+      </div>
+    }
+
+    @if (editandoEmitida()) {
+      <div class="flex flex-col gap-1">
+        <label for="motivo" class="text-sm font-medium">Motivo del cambio (obligatorio)</label>
+        <textarea id="motivo" formControlName="motivo" rows="2"
+          class="w-full rounded-md border bg-transparent px-3 py-2 text-sm"
+          style="border-color: var(--surface-border); color: var(--text-color)"
+          placeholder="Por qué se edita esta factura emitida"></textarea>
+      </div>
+    }
+
+    <div class="mt-1 flex justify-end gap-2">
+      <p-button type="button" label="Cancelar" severity="secondary" [text]="true" (onClick)="formVisible.set(false)" />
+      <p-button type="submit" label="Guardar" icon="pi pi-check" [loading]="guardando()" [disabled]="form.invalid || items.length === 0 || guardando()" />
+    </div>
+  </form>
+</p-dialog>
+
+<!-- Anular -->
+<p-dialog [visible]="anularVisible()" (visibleChange)="anularVisible.set($event)" [modal]="true" [style]="{ width: '28rem' }" header="Anular factura" [dismissableMask]="true">
+  <form [formGroup]="formAnular" (ngSubmit)="guardarAnular()" class="flex flex-col gap-4 pt-2">
+    <p class="text-sm text-muted">La factura queda registrada como anulada (no se borra).</p>
+    <div class="flex flex-col gap-1">
+      <label for="motivoAnular" class="text-sm font-medium">Motivo</label>
+      <textarea id="motivoAnular" formControlName="motivo" rows="3"
+        class="w-full rounded-md border bg-transparent px-3 py-2 text-sm"
+        style="border-color: var(--surface-border); color: var(--text-color)"
+        placeholder="Motivo de la anulación"></textarea>
+    </div>
+    <div class="mt-1 flex justify-end gap-2">
+      <p-button type="button" label="Cancelar" severity="secondary" [text]="true" (onClick)="anularVisible.set(false)" />
+      <p-button type="submit" label="Anular" icon="pi pi-ban" severity="danger" [loading]="guardando()" [disabled]="formAnular.invalid || guardando()" />
+    </div>
+  </form>
+</p-dialog>
+
+<!-- Abonos -->
+<p-dialog [visible]="abonoVisible()" (visibleChange)="abonoVisible.set($event)" [modal]="true" [style]="{ width: '32rem' }" header="Abonos" [dismissableMask]="true">
+  @if (abonoFactura(); as f) {
+    <div class="flex flex-col gap-4 pt-1">
+      <div class="grid grid-cols-2 gap-2 text-sm">
+        <span class="text-muted">Total</span><span class="text-right font-medium">{{ dineroTexto(f.total) }}</span>
+        <span class="text-muted">Abonado</span><span class="text-right">{{ dineroTexto(f.totalAbonado) }}</span>
+        <span class="text-muted">Saldo</span><span class="text-right font-semibold text-primary-600">{{ dineroTexto(f.saldoPendiente) }}</span>
+      </div>
+
+      @if (f.abonos.length) {
+        <div class="overflow-hidden rounded-lg border" style="border-color: var(--surface-border)">
+          <table class="w-full text-sm">
+            <thead><tr class="text-left text-muted"><th class="px-3 py-1">Fecha</th><th class="px-3 py-1">Método</th><th class="px-3 py-1 text-right">Monto</th></tr></thead>
+            <tbody>
+              @for (a of f.abonos; track a.id) {
+                <tr class="border-t" style="border-color: var(--surface-border)">
+                  <td class="px-3 py-1">{{ fechaTexto(a.fecha) }}</td>
+                  <td class="px-3 py-1">{{ a.metodo }}</td>
+                  <td class="px-3 py-1 text-right">{{ dineroTexto(a.monto) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      @if (f.estadoPago !== 'PAGADA') {
+        <form [formGroup]="formAbono" (ngSubmit)="guardarAbono()" class="flex items-end gap-2">
+          <div class="flex flex-col gap-1">
+            <label class="text-sm font-medium">Monto</label>
+            <p-inputnumber formControlName="monto" [min]="0" [maxFractionDigits]="2" styleClass="w-36" inputStyleClass="w-full" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-sm font-medium">Método</label>
+            <p-select formControlName="metodo" [options]="metodosAbono" optionLabel="label" optionValue="value" appendTo="body" styleClass="w-40" />
+          </div>
+          <p-button type="submit" label="Abonar" icon="pi pi-check" [loading]="guardando()" [disabled]="formAbono.invalid || guardando()" />
+        </form>
+      } @else {
+        <p class="text-sm font-medium text-green-600">Factura pagada.</p>
+      }
+    </div>
+  }
+</p-dialog>
+
+<!-- Detalle / imprimir -->
+<p-dialog [visible]="detalleVisible()" (visibleChange)="detalleVisible.set($event)" [modal]="true" [style]="{ width: '46rem' }" header="Detalle de la factura" [dismissableMask]="true">
+  @if (detalle(); as f) {
+    <div class="flex flex-col gap-3 pt-1">
+      <div class="flex items-start justify-between">
+        <div class="grid grid-cols-1 gap-1 text-sm">
+          <span><span class="text-muted">Factura:</span> <span class="font-medium">{{ f.numero ?? f.id }}</span></span>
+          <span><span class="text-muted">Fecha:</span> {{ fechaTexto(f.fecha) }}</span>
+          <span><span class="text-muted">Cliente:</span> {{ f.clienteNombre ?? 'Consumidor final' }}</span>
+          <span><span class="text-muted">Vendedor:</span> {{ f.usuarioNombre }}</span>
+        </div>
+        <div class="flex flex-col items-end gap-2">
+          <p-tag [value]="estadoLabel(f.estado)" [severity]="sevEstado(f.estado)" />
+          <p-tag [value]="pagoLabel(f.estadoPago)" [severity]="sevPago(f.estadoPago)" />
+          <p-button label="Imprimir" icon="pi pi-print" size="small" [text]="true" (onClick)="imprimir(f)" />
+        </div>
+      </div>
+
+      @if (f.motivoAnulacion) {
+        <p class="rounded-md border px-3 py-2 text-sm text-muted" style="border-color: var(--surface-border)">
+          <span class="font-medium">Motivo de anulación:</span> {{ f.motivoAnulacion }}
+        </p>
+      }
+
+      <div class="overflow-hidden rounded-lg border" style="border-color: var(--surface-border)">
+        <table class="w-full text-sm">
+          <thead><tr class="text-left text-muted">
+            <th class="px-3 py-2">Producto</th><th class="px-3 py-2 text-right">Cant.</th>
+            <th class="px-3 py-2 text-right">P. unit.</th><th class="px-3 py-2 text-right">Imp.</th>
+            <th class="px-3 py-2 text-right">Total</th>
+          </tr></thead>
+          <tbody>
+            @for (d of f.detalles; track d.id) {
+              <tr class="border-t" style="border-color: var(--surface-border)">
+                <td class="px-3 py-2">{{ d.nombreProducto }}</td>
+                <td class="px-3 py-2 text-right">{{ d.cantidad }}</td>
+                <td class="px-3 py-2 text-right">{{ dineroTexto(d.precioUnitario) }}</td>
+                <td class="px-3 py-2 text-right">{{ dineroTexto(d.impuestoLinea) }}</td>
+                <td class="px-3 py-2 text-right">{{ dineroTexto(d.totalLinea) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex flex-col items-end gap-1 text-sm">
+        <span class="text-muted">Subtotal: {{ dineroTexto(f.subtotal) }}</span>
+        <span class="text-muted">Impuesto: {{ dineroTexto(f.impuesto) }}</span>
+        <span class="font-semibold text-primary-600">Total: {{ dineroTexto(f.total) }}</span>
+        <span class="text-muted">Saldo: {{ dineroTexto(f.saldoPendiente) }}</span>
+      </div>
+
+      @if (f.bitacora.length) {
+        <details class="text-sm">
+          <summary class="cursor-pointer font-medium">Bitácora ({{ f.bitacora.length }})</summary>
+          <ul class="mt-2 flex flex-col gap-1">
+            @for (b of f.bitacora; track b.id) {
+              <li class="text-muted">
+                {{ fechaTexto(b.cuando) }} · {{ b.usuarioNombre }} · <span class="font-medium">{{ b.campo }}</span>:
+                {{ b.valorAnterior ?? '—' }} → {{ b.valorNuevo ?? '—' }}@if (b.motivo) { · motivo: {{ b.motivo }} }
+              </li>
+            }
+          </ul>
+        </details>
+      }
+    </div>
+  } @else {
+    <p class="py-4 text-center text-muted">Cargando…</p>
+  }
+</p-dialog>
