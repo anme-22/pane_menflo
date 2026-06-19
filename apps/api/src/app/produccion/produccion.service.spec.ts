@@ -95,4 +95,70 @@ describe('ProduccionService', () => {
     expect(inventario.registrarSalida).not.toHaveBeenCalled();
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
+
+  it('anular una orden CONFIRMADA devuelve el inventario consumido', async () => {
+    const ordenAnulada = {
+      id: 7,
+      fecha: new Date('2026-06-19T00:00:00.000Z'),
+      productoId: 3,
+      recetaId: 5,
+      sacos: { toString: () => '1' },
+      bolsasEsperadas: 200,
+      bolsasReales: null,
+      costoDelMomento: { toString: () => '3000' },
+      estado: 'ANULADA',
+      motivoAnulacion: 'error de receta',
+      confirmadaEn: new Date('2026-06-19T01:00:00.000Z'),
+      producto: { nombre: 'Pan' },
+      receta: { unidadLote: 'quintal', rendimiento: 200 },
+      movimientos: [],
+    };
+    // Una salida asentada al confirmar, que debe revertirse.
+    const salidas = [
+      { insumoId: 10, sucursalId: 1, cantidadBase: 90718.4, costoUnitario: 0.066 },
+    ];
+    const txUpdate = jest.fn().mockResolvedValue({});
+    const revertirSalida = jest.fn().mockResolvedValue(99);
+    const inventario = { revertirSalida, registrarSalida: jest.fn() };
+    const prisma = {
+      ordenProduccion: {
+        findUnique: jest
+          .fn()
+          // asegurarExiste → estado actual CONFIRMADA
+          .mockResolvedValueOnce({ id: 7, estado: 'CONFIRMADA' })
+          // obtener() final → orden ya anulada
+          .mockResolvedValueOnce(ordenAnulada),
+        update: jest.fn(),
+      },
+      movimientoInventario: { findMany: jest.fn().mockResolvedValue(salidas) },
+      $transaction: jest.fn(async (cb) => cb({ ordenProduccion: { update: txUpdate } })),
+    };
+    const service = new ProduccionService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      inventario as never,
+    );
+
+    const dto = await service.anular(7, { motivo: 'error de receta' });
+
+    // Una reversión por cada salida, con los mismos datos a los que salió.
+    expect(revertirSalida).toHaveBeenCalledTimes(1);
+    expect(revertirSalida.mock.calls[0][1]).toMatchObject({
+      insumoId: 10,
+      cantidadBase: 90718.4,
+      costoUnitario: 0.066,
+      ordenProduccionId: 7,
+    });
+    // El cambio de estado va DENTRO de la transacción (atómico con la reversión).
+    expect(txUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          estado: 'ANULADA',
+          motivoAnulacion: 'error de receta',
+        }),
+      }),
+    );
+    expect(dto.estado).toBe('ANULADA');
+  });
 });

@@ -1,3 +1,4 @@
+import { TipoMovimiento } from '@prisma/client';
 import type { Insumo, MovimientoInventario } from '@prisma/client';
 import {
   ABREVIATURA_BASE,
@@ -56,7 +57,10 @@ export function origenMovimiento(m: MovimientoConOrigen): string {
     return `Compra #${m.compraId}`;
   }
   if (m.ordenProduccionId) {
-    return `Producción #${m.ordenProduccionId}`;
+    // Un AJUSTE con origen una orden es la reversión de su consumo al anularla.
+    return m.tipo === TipoMovimiento.AJUSTE
+      ? `Anulación producción #${m.ordenProduccionId}`
+      : `Producción #${m.ordenProduccionId}`;
   }
   return 'Ajuste';
 }

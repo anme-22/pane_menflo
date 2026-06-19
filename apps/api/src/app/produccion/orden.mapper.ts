@@ -1,3 +1,4 @@
+import { TipoMovimiento } from '@prisma/client';
 import type {
   Insumo,
   MovimientoInventario,
@@ -64,7 +65,11 @@ export function toOrdenProduccionDto(
     estado: orden.estado,
     motivoAnulacion: orden.motivoAnulacion,
     confirmadaEn: orden.confirmadaEn?.toISOString() ?? null,
-    consumos: (orden.movimientos ?? []).map(toConsumoDto),
+    // Solo las SALIDA son consumo real; los AJUSTE (reversión por anulación) se
+    // ven en el kardex, no en los consumos de la orden.
+    consumos: (orden.movimientos ?? [])
+      .filter((m) => m.tipo === TipoMovimiento.SALIDA)
+      .map(toConsumoDto),
   };
 }
 
