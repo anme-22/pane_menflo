@@ -216,9 +216,11 @@ export class FacturasPage implements OnInit {
   abrirNueva(): void {
     this.editandoId.set(null);
     this.editandoEstado.set(null);
+    // Resetear los escalares ANTES de tocar el FormArray (form.reset también
+    // resetea `items`); las líneas se (re)construyen al final.
+    this.form.reset({ clienteIdentidad: null, tipoPago: 'CONTADO', motivo: '' });
     this.items.clear();
     this.items.push(this.grupoLinea());
-    this.form.reset({ clienteIdentidad: null, tipoPago: 'CONTADO', motivo: '' });
     this.formVisible.set(true);
   }
 
@@ -231,6 +233,13 @@ export class FacturasPage implements OnInit {
         }
         this.editandoId.set(f.id);
         this.editandoEstado.set(f.estado);
+        // Primero los escalares (form.reset también limpia el FormArray)...
+        this.form.reset({
+          clienteIdentidad: f.clienteIdentidad,
+          tipoPago: f.tipoPago,
+          motivo: '',
+        });
+        // ...y DESPUÉS se reconstruyen las líneas con sus valores.
         this.items.clear();
         for (const d of f.detalles) {
           const g = this.grupoLinea();
@@ -241,11 +250,6 @@ export class FacturasPage implements OnInit {
           });
           this.items.push(g);
         }
-        this.form.reset({
-          clienteIdentidad: f.clienteIdentidad,
-          tipoPago: f.tipoPago,
-          motivo: '',
-        });
         this.formVisible.set(true);
       },
       error: () => this.error('No se pudo cargar la factura.'),
