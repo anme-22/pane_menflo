@@ -47,6 +47,20 @@ export interface SalidaAplicada {
   costo: number;
 }
 
+/** Datos para revertir una salida (al anular una orden ya confirmada). */
+export interface ReversionInventario {
+  insumoId: number;
+  sucursalId: number;
+  /** Cantidad que se devuelve al stock, en unidad base. */
+  cantidadBase: number;
+  /** Costo al que salió; se reintegra al mismo valor. */
+  costoUnitario: number;
+  /** Orden cuya salida se está revirtiendo (origen del ajuste). */
+  ordenProduccionId: number;
+  /** Fecha del movimiento (por defecto, ahora). */
+  fecha?: Date;
+}
+
 /**
  * Servicio de inventario (Feature 7; base para el kardex de la F8). Hoy expone
  * la SALIDA: descuenta el stock de un insumo y asienta un MovimientoInventario
@@ -200,5 +214,69 @@ export class InventarioService {
       costoUnitario: resultado.costoUnitario,
       costo: resultado.costo,
     };
+  }
+
+  /**
+   * Devuelve stock al anular una orden ya confirmada: es el INVERSO de
+   * registrarSalida. Suma la cantidad de vuelta (promedio ponderado, valorada al
+   * costo al que salió) y asienta un AJUSTE positivo con origen la orden. Si no
+   * hubo compras intermedias, el saldo y el promedio vuelven a su valor original.
+   * Opera dentro de la transacción del llamador (atómico con el cambio de estado).
+   */
+  async revertirSalida(
+    tx: Prisma.TransactionClient,
+    reversion: ReversionInventario,
+  ): Promise<number> {
+    const existente = await tx.existencia.findUnique({
+      where: {
+        insumoId_sucursalId: {
+          insumoId: reversion.insumoId,
+          sucursalId: reversion.sucursalId,
+        },
+      },
+    });
+    const saldo: SaldoCosteo = existente
+      ? {
+          cantidadBase: Number(existente.cantidadBase),
+          costoPromedio: Number(existente.costoPromedio),
+        }
+      : { cantidadBase: 0, costoPromedio: 0 };
+
+    const nuevo = this.estrategia.aplicarEntrada(saldo, {
+      cantidadBase: reversion.cantidadBase,
+      costoTotal: reversion.cantidadBase * reversion.costoUnitario,
+    });
+
+    await tx.existencia.upsert({
+      where: {
+        insumoId_sucursalId: {
+          insumoId: reversion.insumoId,
+          sucursalId: reversion.sucursalId,
+        },
+      },
+      create: {
+        insumoId: reversion.insumoId,
+        sucursalId: reversion.sucursalId,
+        cantidadBase: nuevo.cantidadBase,
+        costoPromedio: nuevo.costoPromedio,
+      },
+      update: {
+        cantidadBase: nuevo.cantidadBase,
+        costoPromedio: nuevo.costoPromedio,
+      },
+    });
+
+    const movimiento = await tx.movimientoInventario.create({
+      data: {
+        insumoId: reversion.insumoId,
+        sucursalId: reversion.sucursalId,
+        tipo: TipoMovimiento.AJUSTE,
+        cantidadBase: reversion.cantidadBase,
+        costoUnitario: reversion.costoUnitario,
+        ordenProduccionId: reversion.ordenProduccionId,
+        fecha: reversion.fecha ?? new Date(),
+      },
+    });
+    return movimiento.id;
   }
 }

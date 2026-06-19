@@ -636,5 +636,28 @@ ocultamiento de UI por rol en Angular.
       costo/bolsa L5.38, ganancia/bolsa L2.12; pantalla muestra indirecto por lote 570 y
       la receta lista costo/bolsa 5.38. tests api[+1 indirecto en costo-receta] +
       web[+3 costos-indirectos service] verdes.)
+- [x] Mejora — Reversión de inventario al anular producción
+      (Cierra la deuda de F7: anular una orden CONFIRMADA ahora DEVUELVE el
+      inventario consumido. SIN migración [reusa el enum AJUSTE y el origen
+      ordenProduccionId ya existentes; la CHECK cantidad_base>0 se cumple porque la
+      reversión es positiva]. InventarioService gana `revertirSalida` [inverso de
+      registrarSalida: por cada SALIDA asentada reintegra la misma cantidad al
+      MISMO costo al que salió vía estrategia.aplicarEntrada y asienta un AJUSTE
+      positivo con origen la orden; si no hubo compras intermedias el saldo y el
+      promedio vuelven exactos a su valor original]. ProduccionService.anular: si la
+      orden estaba CONFIRMADA, lee sus movimientos SALIDA y los revierte DENTRO de
+      la misma transacción que el cambio de estado [atómico]; BORRADOR solo cambia de
+      estado [no consumió nada]. orden.mapper: `consumos` filtra a SALIDA [la
+      reversión AJUSTE se ve en el kardex, no en los consumos de la orden].
+      inventario.mapper: un AJUSTE con origen una orden se etiqueta "Anulación
+      producción #N". El costoDelMomento congelado de la orden NO se toca [registro
+      histórico]. NOTA: el reporte de consumo de insumos [F10] sigue sumando solo
+      SALIDA, así que una producción anulada cuenta su consumo histórico [la
+      reversión AJUSTE no lo netea]; el stock/kardex SÍ cuadra. Verificado contra BD
+      [e2e 11/11: crear+confirmar baja stock, anular con motivo devuelve el stock de
+      TODOS los insumos a su valor original, último movimiento del kardex = AJUSTE
+      "Anulación producción #N" con saldo que cuadra, no se anula dos veces 400,
+      orden anulada conserva sus consumos SALIDA]; datos de prueba limpiados. tests
+      api[+1: anular revierte inventario] verdes [49 total].)
 - [ ] Feature 11 — Deploy
 - [ ] Feature 12 — Configuración

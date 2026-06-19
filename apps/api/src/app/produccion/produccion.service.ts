@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { EstadoProduccion } from '@prisma/client';
+import { EstadoProduccion, TipoMovimiento } from '@prisma/client';
 import type {
   OrdenProduccionDto,
   OrdenProduccionResumenDto,
@@ -201,16 +201,49 @@ export class ProduccionService {
     return this.obtener(id);
   }
 
-  /** Anula una orden con motivo obligatorio (deja rastro; no se borra). */
+  /**
+   * Anula una orden con motivo obligatorio (deja rastro; no se borra). Si estaba
+   * CONFIRMADA, DEVUELVE el inventario consumido en la misma transacción: por
+   * cada salida asentada se reintegra la misma cantidad al costo al que salió
+   * (un AJUSTE por insumo). Una orden en BORRADOR no consumió nada, solo cambia
+   * de estado.
+   */
   async anular(id: number, dto: AnularOrdenDto): Promise<OrdenProduccionDto> {
     const orden = await this.asegurarExiste(id);
     if (orden.estado === EstadoProduccion.ANULADA) {
       throw new BadRequestException('La orden ya está anulada.');
     }
-    await this.prisma.ordenProduccion.update({
-      where: { id },
-      data: { estado: EstadoProduccion.ANULADA, motivoAnulacion: dto.motivo },
-    });
+
+    if (orden.estado === EstadoProduccion.CONFIRMADA) {
+      // Reintegra al inventario exactamente lo que esta orden consumió.
+      const salidas = await this.prisma.movimientoInventario.findMany({
+        where: { ordenProduccionId: id, tipo: TipoMovimiento.SALIDA },
+      });
+      await this.prisma.$transaction(async (tx) => {
+        for (const salida of salidas) {
+          await this.inventario.revertirSalida(tx, {
+            insumoId: salida.insumoId,
+            sucursalId: salida.sucursalId,
+            cantidadBase: Number(salida.cantidadBase),
+            costoUnitario: Number(salida.costoUnitario),
+            ordenProduccionId: id,
+          });
+        }
+        await tx.ordenProduccion.update({
+          where: { id },
+          data: {
+            estado: EstadoProduccion.ANULADA,
+            motivoAnulacion: dto.motivo,
+          },
+        });
+      });
+    } else {
+      await this.prisma.ordenProduccion.update({
+        where: { id },
+        data: { estado: EstadoProduccion.ANULADA, motivoAnulacion: dto.motivo },
+      });
+    }
+
     return this.obtener(id);
   }
 
