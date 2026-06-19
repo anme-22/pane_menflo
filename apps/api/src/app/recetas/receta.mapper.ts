@@ -43,6 +43,8 @@ export function toRecetaDto(
         costo: (c?.costo ?? 0).toString(),
       };
     }),
+    costoMateriales: costo.costoMateriales.toString(),
+    costoIndirecto: costo.costoIndirecto.toString(),
     costoReceta: costo.costoReceta.toString(),
     costoPorBolsa: costo.costoPorBolsa.toString(),
   };
@@ -60,6 +62,8 @@ export function toRecetaResumenDto(
     rendimiento: receta.rendimiento,
     unidadLote: receta.unidadLote,
     numIngredientes: receta.ingredientes.length,
+    costoMateriales: costo.costoMateriales.toString(),
+    costoIndirecto: costo.costoIndirecto.toString(),
     costoReceta: costo.costoReceta.toString(),
     costoPorBolsa: costo.costoPorBolsa.toString(),
   };

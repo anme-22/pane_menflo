@@ -1,0 +1,85 @@
+<p-toast />
+
+<section class="mx-auto max-w-4xl">
+  <div class="mb-4 flex items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-primary-600">Costos indirectos</h1>
+      <p class="text-sm text-muted">Mano de obra, luz/agua/gas… se suman al costo por bolsa de las recetas.</p>
+    </div>
+    <p-button label="Nuevo costo" icon="pi pi-plus" (onClick)="abrirNuevo()" />
+  </div>
+
+  <!-- Parámetro de prorrateo + indirecto por lote -->
+  <div class="mb-4 flex flex-wrap items-end justify-between gap-4 rounded-xl border p-4" style="border-color: var(--surface-border)">
+    <form [formGroup]="formParam" (ngSubmit)="guardarParametro()" class="flex items-end gap-3">
+      <div class="flex flex-col gap-1">
+        <label for="qpm" class="text-sm font-medium">Quintales por mes</label>
+        <p-inputnumber inputId="qpm" formControlName="quintalesPorMes" [min]="1" [maxFractionDigits]="0" styleClass="w-32" inputStyleClass="w-full" />
+      </div>
+      <p-button type="submit" label="Guardar" icon="pi pi-check" [loading]="guardando()" [disabled]="formParam.invalid || guardando()" />
+      <span class="text-xs text-muted">Base para prorratear los POR_MES por lote.</span>
+    </form>
+    <div class="rounded-lg border px-3 py-2 text-sm" style="border-color: var(--surface-border)">
+      <span class="text-muted">Indirecto por lote: </span>
+      <span class="text-lg font-semibold text-primary-600">{{ dineroTexto(indirectoPorLote()) }}</span>
+    </div>
+  </div>
+
+  <div class="overflow-hidden rounded-xl border" style="background-color: var(--surface-card); border-color: var(--surface-border)">
+    <p-table [value]="items()" [loading]="cargando()" responsiveLayout="stack" [breakpoint]="'640px'">
+      <ng-template pTemplate="header">
+        <tr><th>Concepto</th><th>Monto</th><th>Periodicidad</th><th>Estado</th><th class="text-right">Acciones</th></tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-c>
+        <tr>
+          <td><span class="p-column-title font-medium sm:hidden">Concepto </span>{{ c.nombre }}</td>
+          <td><span class="p-column-title font-medium sm:hidden">Monto </span>{{ dineroTexto(c.monto) }}</td>
+          <td><span class="p-column-title font-medium sm:hidden">Periodicidad </span>{{ tipoLabel(c.tipo) }}</td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Estado </span>
+            <p-tag [value]="c.activo ? 'Activo' : 'Inactivo'" [severity]="c.activo ? 'success' : 'secondary'" />
+          </td>
+          <td class="text-right whitespace-nowrap">
+            <p-button icon="pi pi-pencil" severity="secondary" [text]="true" [rounded]="true" ariaLabel="Editar" (onClick)="abrirEdicion(c)" />
+            <p-button [icon]="c.activo ? 'pi pi-ban' : 'pi pi-check'" [severity]="c.activo ? 'danger' : 'success'" [text]="true" [rounded]="true" [ariaLabel]="c.activo ? 'Desactivar' : 'Activar'" (onClick)="alternarEstado(c)" />
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr><td colspan="5" class="p-4 text-center text-muted">No hay costos indirectos. Agrega mano de obra, luz/agua/gas…</td></tr>
+      </ng-template>
+    </p-table>
+  </div>
+</section>
+
+<!-- Alta / edición -->
+<p-dialog
+  [visible]="formVisible()"
+  (visibleChange)="formVisible.set($event)"
+  [modal]="true"
+  [style]="{ width: '30rem' }"
+  [header]="editandoId() === null ? 'Nuevo costo indirecto' : 'Editar costo indirecto'"
+  [dismissableMask]="true"
+>
+  <form [formGroup]="form" (ngSubmit)="guardar()" class="flex flex-col gap-4 pt-2">
+    <div class="flex flex-col gap-1">
+      <label for="nombre" class="text-sm font-medium">Concepto</label>
+      <input pInputText id="nombre" formControlName="nombre" class="w-full" placeholder="Mano de obra, Luz/agua/gas…" />
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div class="flex flex-col gap-1">
+        <label for="monto" class="text-sm font-medium">Monto</label>
+        <p-inputnumber inputId="monto" formControlName="monto" [min]="0" [maxFractionDigits]="2" styleClass="w-full" inputStyleClass="w-full" />
+      </div>
+      <div class="flex flex-col gap-1">
+        <label for="tipo" class="text-sm font-medium">Periodicidad</label>
+        <p-select inputId="tipo" formControlName="tipo" [options]="opcionesTipo" optionLabel="label" optionValue="value" appendTo="body" styleClass="w-full" />
+      </div>
+    </div>
+    <small class="text-muted">POR_QUINTAL se aplica por lote; POR_MES se divide entre los quintales/mes.</small>
+    <div class="mt-1 flex justify-end gap-2">
+      <p-button type="button" label="Cancelar" severity="secondary" [text]="true" (onClick)="formVisible.set(false)" />
+      <p-button type="submit" label="Guardar" icon="pi pi-check" [loading]="guardando()" [disabled]="form.invalid || guardando()" />
+    </div>
+  </form>
+</p-dialog>

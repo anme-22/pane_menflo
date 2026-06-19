@@ -27,6 +27,17 @@ export class ConfiguracionService {
     return config;
   }
 
+  /** Actualiza `quintalesPorMes` (base del prorrateo) e invalida la caché. */
+  async actualizarQuintalesPorMes(quintalesPorMes: number): Promise<Configuracion> {
+    const actual = await this.obtener();
+    const updated = await this.prisma.configuracion.update({
+      where: { id: actual.id },
+      data: { quintalesPorMes },
+    });
+    this.cache = updated;
+    return updated;
+  }
+
   /** Configuración como DTO (para el frontend). */
   async obtenerDto(): Promise<ConfiguracionDto> {
     const c = await this.obtener();

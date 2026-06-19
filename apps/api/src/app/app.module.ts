@@ -19,6 +19,7 @@ import { ConfiguracionModule } from './configuracion/configuracion.module';
 import { ImpuestoModule } from './impuesto/impuesto.module';
 import { FacturasModule } from './facturas/facturas.module';
 import { ReportesModule } from './reportes/reportes.module';
+import { CostosIndirectosModule } from './costos-indirectos/costos-indirectos.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { ReportesModule } from './reportes/reportes.module';
     ImpuestoModule,
     FacturasModule,
     ReportesModule,
+    CostosIndirectosModule,
   ],
   controllers: [AppController],
   providers: [AppService],

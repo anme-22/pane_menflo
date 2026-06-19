@@ -257,6 +257,27 @@ periodo (`desde`/`hasta`):
 - Endpoints: `GET /api/reportes/{ventas,ganancia-por-producto,consumo-insumos}?desde=&hasta=`
   y `GET /api/reportes/cuentas-por-cobrar`.
 
+## Costos indirectos y costo por bolsa
+
+El **costo por bolsa** de una receta incluye **materiales + costos indirectos**:
+
+- **Costos indirectos** (mano de obra, luz/agua/gas…): cada uno es `POR_QUINTAL`
+  (se aplica por lote) o `POR_MES` (se prorratea dividiéndolo entre
+  `quintalesPorMes`). El **indirecto por lote** = Σ POR_QUINTAL + Σ POR_MES ÷
+  quintalesPorMes.
+- Se gestionan en la pantalla **Costos indirectos** (admin/super_admin), que
+  también edita `quintalesPorMes`. Endpoints: `GET/POST /api/costos-indirectos`,
+  `PATCH /api/costos-indirectos/:id[/estado]`, `PATCH /api/costos-indirectos/parametros`.
+- `costo por bolsa = (materiales + indirecto por lote) ÷ rendimiento`; la ganancia
+  por producto (Reportes) usa este costo.
+
+### Datos de demo (Pan Blanco)
+
+`pnpm prisma:seed:demo` siembra un ejemplo real y reproducible (idempotente, no
+toca el seed base): 7 insumos con su compra, "Pan Blanco" (precio 7.50), su
+receta (quintal, rinde 350) y los costos indirectos. Imprime el desglose
+(materiales ≈ 1,314, indirecto 570, **costo/bolsa ≈ 5.38**, ganancia ≈ 2.12).
+
 ## Scripts útiles
 
 | Script                      | Qué hace                                            |
@@ -265,7 +286,8 @@ periodo (`desde`/`hasta`):
 | `pnpm db:down`              | Detiene y elimina el contenedor de Postgres         |
 | `pnpm prisma:generate`      | Genera el cliente de Prisma                         |
 | `pnpm prisma:migrate`       | Crea y aplica migraciones (modo dev)                |
-| `pnpm prisma:seed`          | Ejecuta el seed                                     |
+| `pnpm prisma:seed`          | Ejecuta el seed base (unidades, sucursal, super_admin) |
+| `pnpm prisma:seed:demo`     | Siembra datos de demo de Pan Blanco (idempotente)   |
 | `pnpm prisma:reset`         | Reinicia la BD (borra datos), re-migra y re-siembra |
 | `pnpm prisma:studio`        | Abre Prisma Studio                                  |
 | `pnpm nx serve api`         | Sirve la API en modo desarrollo                     |
@@ -297,14 +319,15 @@ periodo (`desde`/`hasta`):
 │   │       ├── impuesto/    # estrategia de impuesto (interfaz + por línea)
 │   │       ├── configuracion/ # banderas del sistema (lectura; edición en F12)
 │   │       ├── facturas/    # facturación: snapshot, abonos, bitácora, impresión
-│   │       └── reportes/    # ventas, ganancia, consumo, cuentas por cobrar
+│   │       ├── reportes/    # ventas, ganancia, consumo, cuentas por cobrar
+│   │       └── costos-indirectos/ # mano de obra, luz/agua/gas (costo por bolsa)
 │   └── web/                 # Angular (PrimeNG + Tailwind)
 │       └── src/
 │           ├── styles.css           # variables CSS de la paleta + modo oscuro
 │           └── app/
 │               ├── core/auth/        # AuthService, interceptor y guards
 │               ├── layout/           # shell (barra + navegación por rol)
-│               ├── features/         # login, inicio, usuarios, productos, clientes, insumos, compras, recetas, produccion, inventario, facturas, reportes
+│               ├── features/         # login, inicio, usuarios, productos, clientes, insumos, compras, recetas, produccion, inventario, facturas, reportes, costos-indirectos
 │               └── theme/            # ThemeService + preset de PrimeNG
 ├── libs/
 │   └── shared/              # tipos/DTOs compartidos (@pane/shared)

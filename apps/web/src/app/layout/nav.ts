@@ -34,5 +34,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Facturas', icon: 'pi pi-receipt', route: '/facturas' },
   // Reportes: gestión/ganancias, solo admin/super_admin.
   { label: 'Reportes', icon: 'pi pi-chart-line', route: '/reportes', roles: ['admin', 'super_admin'] },
+  // Costos indirectos: afectan el costo por bolsa; solo admin/super_admin.
+  { label: 'Costos indirectos', icon: 'pi pi-sliders-h', route: '/costos-indirectos', roles: ['admin', 'super_admin'] },
   { label: 'Usuarios', icon: 'pi pi-users', route: '/usuarios', roles: ['super_admin'] },
 ];
