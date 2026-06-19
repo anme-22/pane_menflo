@@ -24,8 +24,14 @@ export class ComprasController {
   constructor(private readonly comprasService: ComprasService) {}
 
   @Get()
-  listar(@Query('insumoId') insumoId?: string): Promise<CompraDto[]> {
-    return this.comprasService.listar(insumoId ? Number(insumoId) : undefined);
+  listar(
+    @Query('insumoId') insumoId?: string,
+    @Query('proveedorId') proveedorId?: string,
+  ): Promise<CompraDto[]> {
+    return this.comprasService.listar(
+      insumoId ? Number(insumoId) : undefined,
+      proveedorId ? Number(proveedorId) : undefined,
+    );
   }
 
   @Post()

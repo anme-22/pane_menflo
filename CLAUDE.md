@@ -659,5 +659,56 @@ ocultamiento de UI por rol en Angular.
       "Anulación producción #N" con saldo que cuadra, no se anula dos veces 400,
       orden anulada conserva sus consumos SALIDA]; datos de prueba limpiados. tests
       api[+1: anular revierte inventario] verdes [49 total].)
+- [x] Mejora — Ajuste manual de inventario de insumos
+      (Conteo físico / merma de insumo / regalo de insumo: corrige el stock de un
+      INSUMO con motivo, dejando rastro en el kardex. [OJO de dominio: el pan
+      terminado que se regala al cliente NO es esto; va como cortesía en la venta,
+      facturación. El inventario es de insumos.] Migración
+      20260619212613_ajustes_inventario: 2 columnas NULLABLE en
+      `movimiento_inventario` — `motivo` [texto] e `incrementa` [bool: dirección del
+      AJUSTE, ya que cantidad_base siempre es >0]. Los AJUSTE previos [reversión de
+      producción] quedan con incrementa=NULL → el kardex los sigue tratando como
+      suma [compatible]. Backend [SOLID]: InventarioService gana `registrarAjuste`
+      [tx-bound: aumento entra al costo promedio vigente, disminución valora al
+      promedio y valida stock≥0; en ambos el promedio NO cambia; asienta AJUSTE con
+      motivo+incrementa]. `AjustesService` [SOLID-S] resuelve la sucursal default,
+      valida que la unidad sea del MISMO tipo que el insumo, convierte a base
+      [reusa ConversionService] y abre la transacción; devuelve el StockDto
+      actualizado. Endpoint POST /inventario/ajustes, SOLO admin/super_admin [a
+      nivel de método, sobre el InventarioController que el resto consulta].
+      consulta-inventario kardex: el signo resta si SALIDA o AJUSTE con
+      incrementa=false, suma el resto; el mapper expone `motivo` y etiqueta el
+      AJUSTE manual como "Ajuste manual". libs/shared: CrearAjusteRequest +
+      `motivo` en MovimientoKardexDto. Web: en /inventario [Existencias], botón
+      "Ajustar" por insumo [solo admin/super_admin] → diálogo con dirección
+      [Aumentar/Disminuir], cantidad + unidad [filtrada por tipo del insumo,
+      default la base] y motivo; el kardex muestra el motivo bajo el origen.
+      Zoneless con signals+ngModel. Verificado contra BD [e2e 15/15: aumentar 2kg
+      suma 2000 g sin tocar el promedio, disminuir 2kg devuelve el stock,
+      disminución mayor al stock 400, unidad de otro tipo 400, motivo vacío 400, sin
+      token 401, kardex muestra los 2 AJUSTE con origen "Ajuste manual", signo
+      +1/−1 y saldo que cuadra]; datos de prueba limpiados. tests api[+3:
+      registrarAjuste aumento/disminución/insuficiente — 52 total] + web[+1:
+      ajustar — 34 total] verdes.)
+- [x] Mejora — Proveedor en compras
+      (Registrar A QUIÉN se le compra cada lote. Migración 20260619222612_proveedores:
+      tabla `proveedor` [nombre ÚNICO, telefono?, activo, timestamps; no se borra, se
+      desactiva] + columna NULLABLE `proveedor_id` en `compra` [FK ON DELETE SET NULL;
+      las compras viejas y "sin proveedor" siguen válidas] e índice. Backend:
+      ProveedoresModule [CRUD sin borrado; nombre único validado case-insensitive →
+      409 además del índice en BD; solo admin/super_admin, igual que compras].
+      ComprasService: acepta `proveedorId` OPCIONAL [valida que exista→404 y esté
+      activo→400], lo guarda, lo incluye en el DTO [proveedorId/proveedorNombre] y
+      permite filtrar GET /compras?proveedorId. libs/shared: ProveedorDto +
+      Crear/Actualizar; +proveedorId/proveedorNombre en CompraDto y proveedorId? en
+      CrearCompraRequest. Web: pantalla /proveedores en NAV_ITEMS [admin/super_admin]
+      con CRUD [tabla→tarjetas, alta/edición, activar/desactivar]; selector de
+      proveedor [opcional, con limpiar] en el alta de compra y columna Proveedor en el
+      listado. Verificado contra BD [e2e 9/9: crear, nombre duplicado case-insensitive
+      409, actualizar, compra con proveedor inexistente 404 / inactivo 400 / activo OK
+      trae proveedorNombre, compra sin proveedor → null, filtro por proveedor] + UI
+      [3/3: pantalla carga, alta aparece en tabla, selector en el form de compra];
+      datos de prueba limpiados. tests api[52, sin nuevos unit — cubierto por e2e] +
+      web[+3: proveedores service — 37 total] verdes.)
 - [ ] Feature 11 — Deploy
 - [ ] Feature 12 — Configuración

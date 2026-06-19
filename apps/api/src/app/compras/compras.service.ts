@@ -29,12 +29,15 @@ export class ComprasService {
     private readonly inventario: InventarioService,
   ) {}
 
-  /** Lista compras (todas o filtradas por insumo), más recientes primero. */
-  async listar(insumoId?: number): Promise<CompraDto[]> {
+  /** Lista compras (filtrables por insumo y/o proveedor), más recientes primero. */
+  async listar(insumoId?: number, proveedorId?: number): Promise<CompraDto[]> {
     const compras = await this.prisma.compra.findMany({
-      where: insumoId ? { insumoId } : undefined,
+      where: {
+        ...(insumoId ? { insumoId } : {}),
+        ...(proveedorId ? { proveedorId } : {}),
+      },
       orderBy: { fecha: 'desc' },
-      include: { insumo: true, unidadCompra: true },
+      include: { insumo: true, unidadCompra: true, proveedor: true },
     });
     return compras.map(toCompraDto);
   }
@@ -56,6 +59,19 @@ export class ComprasService {
       throw new BadRequestException(
         'La unidad de compra no corresponde al tipo del insumo.',
       );
+    }
+
+    // Proveedor opcional: si viene, debe existir y estar activo.
+    if (dto.proveedorId !== undefined) {
+      const proveedor = await this.prisma.proveedor.findUnique({
+        where: { id: dto.proveedorId },
+      });
+      if (!proveedor) {
+        throw new NotFoundException('Proveedor no encontrado.');
+      }
+      if (!proveedor.activo) {
+        throw new BadRequestException('El proveedor está inactivo.');
+      }
     }
 
     const { cantidadBase } = await this.conversion.convertirABase(
@@ -81,8 +97,9 @@ export class ComprasService {
           costo: dto.costo,
           cantidadBase,
           costoPorUnidadBase,
+          proveedorId: dto.proveedorId ?? null,
         },
-        include: { insumo: true, unidadCompra: true },
+        include: { insumo: true, unidadCompra: true, proveedor: true },
       });
 
       // Entrada al stock (promedio ponderado) + asiento del movimiento ENTRADA.

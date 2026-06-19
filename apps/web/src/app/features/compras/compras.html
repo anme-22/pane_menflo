@@ -25,6 +25,7 @@
         <tr>
           <th>Fecha</th>
           <th>Insumo</th>
+          <th>Proveedor</th>
           <th>Cantidad</th>
           <th>Costo total</th>
           <th>En base</th>
@@ -39,6 +40,10 @@
           </td>
           <td>
             <span class="p-column-title font-medium sm:hidden">Insumo </span>{{ c.insumoNombre }}
+          </td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Proveedor </span>
+            {{ c.proveedorNombre || '—' }}
           </td>
           <td>
             <span class="p-column-title font-medium sm:hidden">Cantidad </span>
@@ -61,7 +66,7 @@
 
       <ng-template pTemplate="emptymessage">
         <tr>
-          <td colspan="6" class="p-4 text-center text-muted">
+          <td colspan="7" class="p-4 text-center text-muted">
             No hay compras registradas todavía.
           </td>
         </tr>
@@ -141,6 +146,24 @@
         [min]="0"
         styleClass="w-full"
         inputStyleClass="w-full"
+      />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="proveedor" class="text-sm font-medium">
+        Proveedor <span class="text-muted">(opcional)</span>
+      </label>
+      <p-select
+        inputId="proveedor"
+        formControlName="proveedorId"
+        [options]="proveedoresActivos()"
+        optionLabel="nombre"
+        optionValue="id"
+        placeholder="Sin proveedor"
+        [showClear]="true"
+        emptyMessage="No hay proveedores. Créalos en Proveedores."
+        appendTo="body"
+        styleClass="w-full"
       />
     </div>
 

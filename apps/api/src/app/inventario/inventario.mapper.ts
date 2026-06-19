@@ -62,7 +62,8 @@ export function origenMovimiento(m: MovimientoConOrigen): string {
       ? `Anulación producción #${m.ordenProduccionId}`
       : `Producción #${m.ordenProduccionId}`;
   }
-  return 'Ajuste';
+  // AJUSTE manual (conteo físico, merma de insumo, regalo…): sin compra ni orden.
+  return 'Ajuste manual';
 }
 
 /** Mapea un movimiento al DTO del kardex, con el saldo acumulado ya calculado. */
@@ -79,6 +80,7 @@ export function toMovimientoKardexDto(
     cantidadBase: m.cantidadBase.toString(),
     signo,
     costoUnitario: m.costoUnitario.toString(),
+    motivo: m.motivo,
     saldo: saldo.toString(),
   };
 }

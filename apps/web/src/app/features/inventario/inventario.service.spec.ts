@@ -4,7 +4,7 @@ import {
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
-import type { CoberturaRequest } from '@pane/shared';
+import type { CoberturaRequest, CrearAjusteRequest } from '@pane/shared';
 import { InventarioService } from './inventario.service';
 
 describe('InventarioService', () => {
@@ -49,5 +49,20 @@ describe('InventarioService', () => {
     const req = http.expectOne('/api/inventario/alertas');
     expect(req.request.method).toBe('GET');
     req.flush([]);
+  });
+
+  it('ajustar hace POST a /inventario/ajustes con el cuerpo', () => {
+    const cuerpo: CrearAjusteRequest = {
+      insumoId: 1,
+      incrementa: false,
+      cantidad: 2,
+      unidadId: 4,
+      motivo: 'se mojó un saco',
+    };
+    service.ajustar(cuerpo).subscribe();
+    const req = http.expectOne('/api/inventario/ajustes');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(cuerpo);
+    req.flush({});
   });
 });

@@ -1,7 +1,9 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
+import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
+import { InputTextModule } from 'primeng/inputtext';
 import { MessageService } from 'primeng/api';
 import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
@@ -13,8 +15,11 @@ import type {
   KardexDto,
   RecetaResumenDto,
   StockDto,
+  UnidadMedida,
 } from '@pane/shared';
+import { AuthService } from '../../core/auth/auth.service';
 import { RecetasService } from '../recetas/recetas.service';
+import { UnidadesService } from '../insumos/unidades.service';
 import { InventarioService } from './inventario.service';
 
 const numero = new Intl.NumberFormat('es-HN', { maximumFractionDigits: 2 });
@@ -39,7 +44,9 @@ const fecha = new Intl.DateTimeFormat('es-HN', { dateStyle: 'medium' });
     FormsModule,
     TableModule,
     ButtonModule,
+    DialogModule,
     InputNumberModule,
+    InputTextModule,
     SelectModule,
     TagModule,
     ToastModule,
@@ -50,11 +57,39 @@ const fecha = new Intl.DateTimeFormat('es-HN', { dateStyle: 'medium' });
 export class InventarioPage implements OnInit {
   private readonly service = inject(InventarioService);
   private readonly recetasService = inject(RecetasService);
+  private readonly unidadesService = inject(UnidadesService);
+  private readonly auth = inject(AuthService);
   private readonly toast = inject(MessageService);
+
+  /** Solo admin/super_admin ajustan stock; el resto consulta. */
+  protected readonly puedeGestionar = computed(() =>
+    this.auth.tieneRol('admin', 'super_admin'),
+  );
 
   protected readonly existencias = signal<StockDto[]>([]);
   protected readonly alertas = signal<AlertaStockDto[]>([]);
+  protected readonly unidades = signal<UnidadMedida[]>([]);
   protected readonly cargando = signal(false);
+
+  // --- ajuste manual de stock ---
+  protected readonly ajusteVisible = signal(false);
+  protected readonly ajusteInsumo = signal<StockDto | null>(null);
+  protected readonly ajusteIncrementa = signal(true);
+  protected readonly ajusteCantidad = signal<number | null>(null);
+  protected readonly ajusteUnidadId = signal<number | null>(null);
+  protected readonly ajusteMotivo = signal('');
+  protected readonly guardandoAjuste = signal(false);
+
+  protected readonly opcionesDireccion = [
+    { label: 'Aumentar (+)', value: true },
+    { label: 'Disminuir (−)', value: false },
+  ];
+
+  /** Unidades del mismo tipo que el insumo del ajuste. */
+  protected readonly unidadesAjuste = computed(() => {
+    const ins = this.ajusteInsumo();
+    return ins ? this.unidades().filter((u) => u.tipo === ins.tipo) : [];
+  });
 
   // --- kardex ---
   protected readonly insumoKardexId = signal<number | null>(null);
@@ -86,6 +121,12 @@ export class InventarioPage implements OnInit {
       next: (r) => this.recetas.set(r),
       error: () => this.error('No se pudieron cargar las recetas.'),
     });
+    if (this.puedeGestionar()) {
+      this.unidadesService.listar().subscribe({
+        next: (u) => this.unidades.set(u),
+        error: () => this.error('No se pudieron cargar las unidades.'),
+      });
+    }
   }
 
   cargar(): void {
@@ -125,6 +166,57 @@ export class InventarioPage implements OnInit {
         this.error('No se pudo cargar el kardex.');
       },
     });
+  }
+
+  // ---- ajuste manual de stock ----
+
+  abrirAjuste(s: StockDto): void {
+    this.ajusteInsumo.set(s);
+    this.ajusteIncrementa.set(true);
+    this.ajusteCantidad.set(null);
+    this.ajusteMotivo.set('');
+    // Unidad por defecto: la base del tipo (factor 1).
+    const base = this.unidades().find(
+      (u) => u.tipo === s.tipo && Number(u.factorABase) === 1,
+    );
+    this.ajusteUnidadId.set(base ? base.id : null);
+    this.ajusteVisible.set(true);
+  }
+
+  guardarAjuste(): void {
+    const ins = this.ajusteInsumo();
+    const cant = this.ajusteCantidad();
+    const unidadId = this.ajusteUnidadId();
+    const motivo = this.ajusteMotivo().trim();
+    if (!ins || !cant || cant <= 0 || unidadId === null || motivo.length < 3) {
+      this.error('Completa cantidad, unidad y un motivo (mínimo 3 caracteres).');
+      return;
+    }
+    this.guardandoAjuste.set(true);
+    this.service
+      .ajustar({
+        insumoId: ins.insumoId,
+        incrementa: this.ajusteIncrementa(),
+        cantidad: cant,
+        unidadId,
+        motivo,
+      })
+      .subscribe({
+        next: () => {
+          this.guardandoAjuste.set(false);
+          this.ajusteVisible.set(false);
+          this.toast.add({ severity: 'success', summary: 'Stock ajustado', life: 2500 });
+          this.cargar();
+          // Si el kardex de este insumo está abierto, refrescarlo.
+          if (this.insumoKardexId() === ins.insumoId) {
+            this.verKardex(ins.insumoId);
+          }
+        },
+        error: (e) => {
+          this.guardandoAjuste.set(false);
+          this.error(e?.error?.message ?? 'No se pudo ajustar el stock.');
+        },
+      });
   }
 
   // ---- cobertura ----

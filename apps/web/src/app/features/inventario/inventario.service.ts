@@ -5,12 +5,16 @@ import type {
   AlertaStockDto,
   CoberturaRequest,
   CoberturaResultadoDto,
+  CrearAjusteRequest,
   KardexDto,
   StockDto,
 } from '@pane/shared';
 import { API_BASE } from '../../core/api';
 
-/** Cliente HTTP de inventario (consulta): existencias, alertas, kardex, cobertura. */
+/**
+ * Cliente HTTP de inventario: consulta (existencias, alertas, kardex, cobertura)
+ * y el ajuste manual de stock (admin/super_admin).
+ */
 @Injectable({ providedIn: 'root' })
 export class InventarioService {
   private readonly http = inject(HttpClient);
@@ -30,5 +34,10 @@ export class InventarioService {
 
   cobertura(data: CoberturaRequest): Observable<CoberturaResultadoDto> {
     return this.http.post<CoberturaResultadoDto>(`${this.url}/cobertura`, data);
+  }
+
+  /** Ajuste manual de stock (conteo físico, merma de insumo, regalo…). */
+  ajustar(data: CrearAjusteRequest): Observable<StockDto> {
+    return this.http.post<StockDto>(`${this.url}/ajustes`, data);
   }
 }

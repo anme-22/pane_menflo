@@ -5,6 +5,7 @@ import { SucursalesModule } from '../sucursales/sucursales.module';
 import { InventarioController } from './inventario.controller';
 import { InventarioService } from './inventario.service';
 import { ConsultaInventarioService } from './consulta-inventario.service';
+import { AjustesService } from './ajustes.service';
 
 /**
  * Módulo de inventario.
@@ -17,7 +18,7 @@ import { ConsultaInventarioService } from './consulta-inventario.service';
 @Module({
   imports: [CosteoModule, UnidadesModule, SucursalesModule],
   controllers: [InventarioController],
-  providers: [InventarioService, ConsultaInventarioService],
+  providers: [InventarioService, ConsultaInventarioService, AjustesService],
   exports: [InventarioService],
 })
 export class InventarioModule {}

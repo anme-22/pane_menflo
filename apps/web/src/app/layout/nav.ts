@@ -26,6 +26,8 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Inventario', icon: 'pi pi-chart-bar', route: '/inventario' },
   // Compras: operación de costo, solo admin/super_admin.
   { label: 'Compras', icon: 'pi pi-shopping-cart', route: '/compras', roles: ['admin', 'super_admin'] },
+  // Proveedores: catálogo para las compras, solo admin/super_admin.
+  { label: 'Proveedores', icon: 'pi pi-truck', route: '/proveedores', roles: ['admin', 'super_admin'] },
   // Recetas: gestión del negocio, solo admin/super_admin.
   { label: 'Recetas', icon: 'pi pi-book', route: '/recetas', roles: ['admin', 'super_admin'] },
   // Producción: operación del negocio, solo admin/super_admin.
