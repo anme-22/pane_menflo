@@ -35,7 +35,11 @@ export interface RecetaDto {
   /** Etiqueta del lote ("quintal", "saco"...). */
   unidadLote: string;
   ingredientes: RecetaIngredienteDto[];
-  /** Costo total de un lote, valorando insumos al costo actual (promedio pond.). */
+  /** Costo de los materiales (insumos) por lote, al costo actual (promedio pond.). */
+  costoMateriales: string;
+  /** Costo indirecto prorrateado por lote (mano de obra, luz/agua/gas...). */
+  costoIndirecto: string;
+  /** Costo total de un lote = materiales + indirecto. */
   costoReceta: string;
   /** costoReceta ÷ rendimiento. */
   costoPorBolsa: string;
@@ -49,6 +53,11 @@ export interface RecetaResumenDto {
   rendimiento: number;
   unidadLote: string;
   numIngredientes: number;
+  /** Costo de los materiales por lote. */
+  costoMateriales: string;
+  /** Costo indirecto por lote. */
+  costoIndirecto: string;
+  /** Costo total del lote = materiales + indirecto. */
   costoReceta: string;
   costoPorBolsa: string;
 }

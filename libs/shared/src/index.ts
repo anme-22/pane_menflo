@@ -9,3 +9,4 @@ export * from './lib/inventario';
 export * from './lib/configuracion';
 export * from './lib/factura';
 export * from './lib/reporte';
+export * from './lib/costo-indirecto';

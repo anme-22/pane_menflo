@@ -406,9 +406,38 @@ model Configuracion {
   caiRango                String?   @map("cai_rango") @db.VarChar(100)
   caiFechaLimite          DateTime? @map("cai_fecha_limite") @db.Date
   pinEdicionActivo        Boolean   @default(false) @map("pin_edicion_activo")
+  // Quintales producidos al mes: base para prorratear los costos indirectos
+  // POR_MES por lote (mejora de costos indirectos).
+  quintalesPorMes         Int       @default(100) @map("quintales_por_mes")
   actualizadoEn           DateTime  @updatedAt @map("actualizado_en")
 
   @@map("configuracion")
+  @@schema("public")
+}
+
+/// Periodicidad de un costo indirecto (mejora de costos indirectos).
+/// POR_QUINTAL: se aplica por cada lote/quintal producido. POR_MES: es un gasto
+/// mensual que se prorratea por lote dividiéndolo entre `quintalesPorMes`.
+enum TipoCostoIndirecto {
+  POR_QUINTAL
+  POR_MES
+
+  @@schema("public")
+}
+
+/// Costo indirecto de producción (mano de obra, luz/agua/gas...). Se suma al
+/// costo de la receta por lote: los POR_QUINTAL tal cual y los POR_MES
+/// prorrateados (monto / quintalesPorMes). NO se borra: se desactiva.
+model CostoIndirecto {
+  id            Int                @id @default(autoincrement())
+  nombre        String             @unique @db.VarChar(150)
+  monto         Decimal            @db.Decimal(12, 2)
+  tipo          TipoCostoIndirecto
+  activo        Boolean            @default(true)
+  creadoEn      DateTime           @default(now()) @map("creado_en")
+  actualizadoEn DateTime           @updatedAt @map("actualizado_en")
+
+  @@map("costo_indirecto")
   @@schema("public")
 }
 

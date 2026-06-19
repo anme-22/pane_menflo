@@ -77,6 +77,13 @@ export const appRoutes: Route[] = [
           import('./features/reportes/reportes').then((m) => m.ReportesPage),
       },
       {
+        path: 'costos-indirectos',
+        // Afectan el costo por bolsa: solo admin/super_admin.
+        canActivate: [rolGuard('admin', 'super_admin')],
+        loadComponent: () =>
+          import('./features/costos-indirectos/costos-indirectos').then((m) => m.CostosIndirectosPage),
+      },
+      {
         path: 'usuarios',
         // Solo super_admin (además de ocultarse en la UI).
         canActivate: [rolGuard('super_admin')],

@@ -610,5 +610,31 @@ ocultamiento de UI por rol en Angular.
       el costo histórico por venta y la masa→varios productos quedan para la revisión
       futura de Producción. tests api[+5: ganancia, consumo, cuentas, rango] + web[+4:
       reportes service] verdes.)
+- [x] Mejora — Costos indirectos + Seed de demo (Pan Blanco)
+      (Mejora del costeo: ahora el costo por bolsa incluye COSTOS INDIRECTOS. Prisma:
+      enum `TipoCostoIndirecto` (POR_QUINTAL/POR_MES), tabla `costo_indirecto`
+      [nombre único, monto, tipo, activo; no se borra, se desactiva] y campo
+      `quintalesPorMes` en `configuracion` [base del prorrateo POR_MES]; migración con
+      CHECK monto≥0 y quintales_por_mes>0. `CostoRecetaService` extendido: indirecto
+      por lote = Σ POR_QUINTAL + Σ POR_MES/quintalesPorMes; `costoReceta = materiales +
+      indirecto`, `costoPorBolsa = costoReceta/rendimiento`. Esto cambia el costo/bolsa
+      en Recetas y la ganancia en Reportes (ahora incluyen indirectos). Supuesto: 1
+      lote ≈ 1 quintal para el prorrateo. RecetaDto expone costoMateriales/costoIndirecto.
+      Backend: módulo `costos-indirectos` (CRUD sin borrado + PATCH /parametros para
+      quintalesPorMes; ConfiguracionService gana actualizarQuintalesPorMes que invalida
+      su caché). Endpoints GET/POST/PATCH /costos-indirectos[/:id][/estado][/parametros];
+      solo admin/super_admin. libs/shared: CostoIndirectoDto/Resumen + DTOs + labels.
+      Web: /costos-indirectos en NAV_ITEMS [admin/super_admin] con CRUD, activar/
+      desactivar, edición de quintalesPorMes e indirecto por lote en vivo.
+      SEED DE DEMO (`apps/api/prisma/seed-demo.ts`, script `pnpm prisma:seed:demo`):
+      IDEMPOTENTE (busca por nombre; la compra se crea solo si el insumo no tiene una;
+      no toca el seed base). Siembra 7 insumos + una compra c/u (costo exacto por
+      presentación, stock para ~10 quintales), producto "Pan Blanco" (precio 7.50),
+      receta (quintal, rendimiento 350) y los costos indirectos (Mano de obra 350
+      POR_QUINTAL, Luz/agua/gas 22000 POR_MES, quintalesPorMes 100). Imprime el desglose.
+      Verificado [seed + API + UI]: materiales ≈1314.13, indirecto 570, total ≈1884.13,
+      costo/bolsa L5.38, ganancia/bolsa L2.12; pantalla muestra indirecto por lote 570 y
+      la receta lista costo/bolsa 5.38. tests api[+1 indirecto en costo-receta] +
+      web[+3 costos-indirectos service] verdes.)
 - [ ] Feature 11 — Deploy
 - [ ] Feature 12 — Configuración

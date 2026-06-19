@@ -10,6 +10,7 @@
     "prisma:deploy": "prisma migrate deploy --schema apps/api/prisma/schema.prisma",
     "prisma:reset": "prisma migrate reset --schema apps/api/prisma/schema.prisma",
     "prisma:seed": "prisma db seed",
+    "prisma:seed:demo": "tsx apps/api/prisma/seed-demo.ts",
     "prisma:studio": "prisma studio --schema apps/api/prisma/schema.prisma"
   },
   "prisma": {
