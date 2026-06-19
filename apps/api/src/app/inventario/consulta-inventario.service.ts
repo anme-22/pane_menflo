@@ -85,7 +85,12 @@ export class ConsultaInventarioService {
 
     let saldo = 0;
     const filas = movimientos.map((m) => {
-      const signo: 1 | -1 = m.tipo === TipoMovimiento.SALIDA ? -1 : 1;
+      // Resta una SALIDA o un AJUSTE de disminución (incrementa = false); el
+      // resto suma (ENTRADA, AJUSTE de aumento o de reversión con incrementa NULL).
+      const resta =
+        m.tipo === TipoMovimiento.SALIDA ||
+        (m.tipo === TipoMovimiento.AJUSTE && m.incrementa === false);
+      const signo: 1 | -1 = resta ? -1 : 1;
       saldo += signo * Number(m.cantidadBase);
       return toMovimientoKardexDto(m, signo, saldo);
     });

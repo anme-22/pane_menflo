@@ -334,6 +334,11 @@ model MovimientoInventario {
   costoUnitario     Decimal        @map("costo_unitario") @db.Decimal(18, 6)
   ordenProduccionId Int?           @map("orden_produccion_id")
   compraId          Int?           @map("compra_id")
+  /// Motivo del movimiento (usado por los AJUSTE manuales; deja rastro).
+  motivo            String?
+  /// Dirección de un AJUSTE: true = suma al stock, false = resta. NULL en
+  /// ENTRADA/SALIDA y en los AJUSTE de reversión (que siempre suman).
+  incrementa        Boolean?
   fecha             DateTime       @default(now())
   creadoEn          DateTime       @default(now()) @map("creado_en")
 

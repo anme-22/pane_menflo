@@ -47,6 +47,9 @@
             <th>Costo prom.</th>
             <th>Valor</th>
             <th>Estado</th>
+            @if (puedeGestionar()) {
+              <th class="text-right">Acciones</th>
+            }
           </tr>
         </ng-template>
         <ng-template pTemplate="body" let-s>
@@ -72,10 +75,23 @@
                 <p-tag value="OK" severity="success" />
               }
             </td>
+            @if (puedeGestionar()) {
+              <td class="text-right">
+                <span class="p-column-title font-medium sm:hidden">Acciones </span>
+                <p-button
+                  label="Ajustar"
+                  icon="pi pi-sliders-h"
+                  severity="secondary"
+                  size="small"
+                  [text]="true"
+                  (onClick)="abrirAjuste(s)"
+                />
+              </td>
+            }
           </tr>
         </ng-template>
         <ng-template pTemplate="emptymessage">
-          <tr><td colspan="6" class="p-4 text-center text-muted">No hay insumos todavía.</td></tr>
+          <tr><td [attr.colspan]="puedeGestionar() ? 7 : 6" class="p-4 text-center text-muted">No hay insumos todavía.</td></tr>
         </ng-template>
       </p-table>
     </div>
@@ -127,7 +143,13 @@
                   [severity]="m.tipo === 'ENTRADA' ? 'success' : (m.tipo === 'SALIDA' ? 'danger' : 'secondary')"
                 />
               </td>
-              <td><span class="p-column-title font-medium sm:hidden">Origen </span>{{ m.origen }}</td>
+              <td>
+                <span class="p-column-title font-medium sm:hidden">Origen </span>
+                {{ m.origen }}
+                @if (m.motivo) {
+                  <span class="block text-xs text-muted">{{ m.motivo }}</span>
+                }
+              </td>
               <td>
                 <span class="p-column-title font-medium sm:hidden">Cantidad </span>
                 <span [class.text-primary-600]="m.signo < 0">
@@ -249,3 +271,90 @@
     }
   </div>
 </section>
+
+<!-- Diálogo de ajuste manual de stock -->
+<p-dialog
+  [visible]="ajusteVisible()"
+  (visibleChange)="ajusteVisible.set($event)"
+  [modal]="true"
+  [style]="{ width: '28rem' }"
+  [header]="'Ajustar stock' + (ajusteInsumo() ? ' — ' + ajusteInsumo()!.insumoNombre : '')"
+>
+  @if (ajusteInsumo(); as ins) {
+    <div class="flex flex-col gap-4">
+      <p class="text-sm text-muted">
+        Stock actual: <span class="font-medium">{{ ins.equivalente }}</span>.
+        Úsalo para conteo físico, merma de insumo o un regalo. Queda registrado en el kardex.
+      </p>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-medium">Dirección</label>
+        <p-select
+          [options]="opcionesDireccion"
+          optionLabel="label"
+          optionValue="value"
+          [ngModel]="ajusteIncrementa()"
+          (ngModelChange)="ajusteIncrementa.set($event)"
+          appendTo="body"
+          styleClass="w-full"
+        />
+      </div>
+
+      <div class="flex gap-3">
+        <div class="flex flex-1 flex-col gap-1">
+          <label class="text-sm font-medium">Cantidad</label>
+          <p-inputnumber
+            [ngModel]="ajusteCantidad()"
+            (ngModelChange)="ajusteCantidad.set($event)"
+            [min]="0"
+            [maxFractionDigits]="4"
+            styleClass="w-full"
+            inputStyleClass="w-full"
+            placeholder="0"
+          />
+        </div>
+        <div class="flex flex-1 flex-col gap-1">
+          <label class="text-sm font-medium">Unidad</label>
+          <p-select
+            [options]="unidadesAjuste()"
+            optionLabel="abreviatura"
+            optionValue="id"
+            [ngModel]="ajusteUnidadId()"
+            (ngModelChange)="ajusteUnidadId.set($event)"
+            placeholder="Unidad"
+            appendTo="body"
+            styleClass="w-full"
+          />
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-medium">Motivo</label>
+        <input
+          pInputText
+          [ngModel]="ajusteMotivo()"
+          (ngModelChange)="ajusteMotivo.set($event)"
+          placeholder="Ej.: conteo físico, se mojó un saco…"
+          class="w-full"
+        />
+      </div>
+
+      <div class="mt-1 flex justify-end gap-2">
+        <p-button
+          type="button"
+          label="Cancelar"
+          severity="secondary"
+          [text]="true"
+          (onClick)="ajusteVisible.set(false)"
+        />
+        <p-button
+          type="button"
+          label="Guardar ajuste"
+          icon="pi pi-check"
+          [loading]="guardandoAjuste()"
+          (onClick)="guardarAjuste()"
+        />
+      </div>
+    </div>
+  }
+</p-dialog>

@@ -61,6 +61,26 @@ export interface ReversionInventario {
   fecha?: Date;
 }
 
+/** Datos para un ajuste manual de stock (conteo físico, merma de insumo…). */
+export interface AjusteInventario {
+  insumoId: number;
+  sucursalId: number;
+  /** true = suma al stock, false = resta. */
+  incrementa: boolean;
+  /** Cantidad a ajustar, en unidad base (positiva). */
+  cantidadBase: number;
+  /** Motivo (queda en el movimiento). */
+  motivo: string;
+  /** Fecha del movimiento (por defecto, ahora). */
+  fecha?: Date;
+}
+
+/** Resultado de un ajuste ya aplicado (saldo nuevo en unidad base). */
+export interface AjusteAplicado {
+  movimientoId: number;
+  saldoBase: number;
+}
+
 /**
  * Servicio de inventario (Feature 7; base para el kardex de la F8). Hoy expone
  * la SALIDA: descuenta el stock de un insumo y asienta un MovimientoInventario
@@ -278,5 +298,92 @@ export class InventarioService {
       },
     });
     return movimiento.id;
+  }
+
+  /**
+   * Ajuste manual de stock (conteo físico, merma de insumo, regalo…). Suma o
+   * resta `cantidadBase` y asienta un AJUSTE con motivo y dirección. La salida y
+   * la entrada se valoran al costo promedio vigente, así que el promedio NO
+   * cambia (un ajuste no aporta nueva información de costo). Lanza 400 si una
+   * disminución deja el stock negativo. Opera en la transacción del llamador.
+   */
+  async registrarAjuste(
+    tx: Prisma.TransactionClient,
+    ajuste: AjusteInventario,
+  ): Promise<AjusteAplicado> {
+    if (ajuste.cantidadBase <= 0) {
+      throw new BadRequestException('La cantidad del ajuste debe ser mayor que 0.');
+    }
+
+    const existente = await tx.existencia.findUnique({
+      where: {
+        insumoId_sucursalId: {
+          insumoId: ajuste.insumoId,
+          sucursalId: ajuste.sucursalId,
+        },
+      },
+    });
+    const saldo: SaldoCosteo = existente
+      ? {
+          cantidadBase: Number(existente.cantidadBase),
+          costoPromedio: Number(existente.costoPromedio),
+        }
+      : { cantidadBase: 0, costoPromedio: 0 };
+
+    let nuevo: SaldoCosteo;
+    let costoUnitario: number;
+    if (ajuste.incrementa) {
+      // Entra al costo promedio vigente: el promedio no cambia.
+      nuevo = this.estrategia.aplicarEntrada(saldo, {
+        cantidadBase: ajuste.cantidadBase,
+        costoTotal: ajuste.cantidadBase * saldo.costoPromedio,
+      });
+      costoUnitario = saldo.costoPromedio;
+    } else {
+      if (saldo.cantidadBase < ajuste.cantidadBase) {
+        throw new BadRequestException(
+          `Stock insuficiente para disminuir: hay ${saldo.cantidadBase} y se quitan ${ajuste.cantidadBase} (unidad base).`,
+        );
+      }
+      const resultado = this.estrategia.valorarSalida(saldo, {
+        cantidadBase: ajuste.cantidadBase,
+      });
+      nuevo = resultado.saldo;
+      costoUnitario = resultado.costoUnitario;
+    }
+
+    await tx.existencia.upsert({
+      where: {
+        insumoId_sucursalId: {
+          insumoId: ajuste.insumoId,
+          sucursalId: ajuste.sucursalId,
+        },
+      },
+      create: {
+        insumoId: ajuste.insumoId,
+        sucursalId: ajuste.sucursalId,
+        cantidadBase: nuevo.cantidadBase,
+        costoPromedio: nuevo.costoPromedio,
+      },
+      update: {
+        cantidadBase: nuevo.cantidadBase,
+        costoPromedio: nuevo.costoPromedio,
+      },
+    });
+
+    const movimiento = await tx.movimientoInventario.create({
+      data: {
+        insumoId: ajuste.insumoId,
+        sucursalId: ajuste.sucursalId,
+        tipo: TipoMovimiento.AJUSTE,
+        cantidadBase: ajuste.cantidadBase,
+        costoUnitario,
+        motivo: ajuste.motivo,
+        incrementa: ajuste.incrementa,
+        fecha: ajuste.fecha ?? new Date(),
+      },
+    });
+
+    return { movimientoId: movimiento.id, saldoBase: nuevo.cantidadBase };
   }
 }

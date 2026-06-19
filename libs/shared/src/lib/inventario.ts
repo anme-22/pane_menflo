@@ -36,14 +36,16 @@ export interface MovimientoKardexDto {
   id: number;
   fecha: string;
   tipo: TipoMovimiento;
-  /** Origen legible ("Compra #3", "Producción #7"). */
+  /** Origen legible ("Compra #3", "Producción #7", "Ajuste manual"). */
   origen: string;
   /** Cantidad del movimiento en unidad base (positiva). */
   cantidadBase: string;
-  /** +1 entrada, -1 salida (signo aplicado al saldo). */
+  /** +1 suma al saldo (entrada/ajuste +), -1 resta (salida/ajuste −). */
   signo: 1 | -1;
   /** Costo por unidad base del movimiento. */
   costoUnitario: string;
+  /** Motivo (solo en ajustes manuales; null en compras/producción). */
+  motivo: string | null;
   /** Saldo acumulado en unidad base tras este movimiento. */
   saldo: string;
 }
@@ -97,4 +99,19 @@ export interface AlertaStockDto {
   cantidadBase: string;
   stockMinimo: string;
   equivalente: string;
+}
+
+/**
+ * Ajuste manual de stock de un insumo (conteo físico, merma de insumo, regalo…).
+ * La cantidad se da en cualquier unidad del tipo del insumo y se convierte a base.
+ */
+export interface CrearAjusteRequest {
+  insumoId: number;
+  /** true = sumar al stock, false = restar. */
+  incrementa: boolean;
+  /** Cantidad a ajustar, en la unidad indicada. */
+  cantidad: number;
+  unidadId: number;
+  /** Motivo obligatorio (queda en el kardex). */
+  motivo: string;
 }

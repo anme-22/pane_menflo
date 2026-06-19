@@ -659,5 +659,36 @@ ocultamiento de UI por rol en Angular.
       "Anulación producción #N" con saldo que cuadra, no se anula dos veces 400,
       orden anulada conserva sus consumos SALIDA]; datos de prueba limpiados. tests
       api[+1: anular revierte inventario] verdes [49 total].)
+- [x] Mejora — Ajuste manual de inventario de insumos
+      (Conteo físico / merma de insumo / regalo de insumo: corrige el stock de un
+      INSUMO con motivo, dejando rastro en el kardex. [OJO de dominio: el pan
+      terminado que se regala al cliente NO es esto; va como cortesía en la venta,
+      facturación. El inventario es de insumos.] Migración
+      20260619212613_ajustes_inventario: 2 columnas NULLABLE en
+      `movimiento_inventario` — `motivo` [texto] e `incrementa` [bool: dirección del
+      AJUSTE, ya que cantidad_base siempre es >0]. Los AJUSTE previos [reversión de
+      producción] quedan con incrementa=NULL → el kardex los sigue tratando como
+      suma [compatible]. Backend [SOLID]: InventarioService gana `registrarAjuste`
+      [tx-bound: aumento entra al costo promedio vigente, disminución valora al
+      promedio y valida stock≥0; en ambos el promedio NO cambia; asienta AJUSTE con
+      motivo+incrementa]. `AjustesService` [SOLID-S] resuelve la sucursal default,
+      valida que la unidad sea del MISMO tipo que el insumo, convierte a base
+      [reusa ConversionService] y abre la transacción; devuelve el StockDto
+      actualizado. Endpoint POST /inventario/ajustes, SOLO admin/super_admin [a
+      nivel de método, sobre el InventarioController que el resto consulta].
+      consulta-inventario kardex: el signo resta si SALIDA o AJUSTE con
+      incrementa=false, suma el resto; el mapper expone `motivo` y etiqueta el
+      AJUSTE manual como "Ajuste manual". libs/shared: CrearAjusteRequest +
+      `motivo` en MovimientoKardexDto. Web: en /inventario [Existencias], botón
+      "Ajustar" por insumo [solo admin/super_admin] → diálogo con dirección
+      [Aumentar/Disminuir], cantidad + unidad [filtrada por tipo del insumo,
+      default la base] y motivo; el kardex muestra el motivo bajo el origen.
+      Zoneless con signals+ngModel. Verificado contra BD [e2e 15/15: aumentar 2kg
+      suma 2000 g sin tocar el promedio, disminuir 2kg devuelve el stock,
+      disminución mayor al stock 400, unidad de otro tipo 400, motivo vacío 400, sin
+      token 401, kardex muestra los 2 AJUSTE con origen "Ajuste manual", signo
+      +1/−1 y saldo que cuadra]; datos de prueba limpiados. tests api[+3:
+      registrarAjuste aumento/disminución/insuficiente — 52 total] + web[+1:
+      ajustar — 34 total] verdes.)
 - [ ] Feature 11 — Deploy
 - [ ] Feature 12 — Configuración
