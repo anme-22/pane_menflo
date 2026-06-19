@@ -195,10 +195,12 @@ export class RecetasPage implements OnInit {
 
   abrirNueva(): void {
     this.editandoId.set(null);
-    this.ingredientes.clear();
-    this.ingredientes.push(this.grupoIngrediente());
+    // Resetear los escalares ANTES de tocar el FormArray: form.reset() también
+    // resetea `ingredientes`, así que las filas se reconstruyen al final.
     this.form.reset({ productoId: null, rendimiento: null, unidadLote: 'quintal' });
     this.form.controls.productoId.enable();
+    this.ingredientes.clear();
+    this.ingredientes.push(this.grupoIngrediente());
     this.formVisible.set(true);
   }
 
@@ -210,6 +212,16 @@ export class RecetasPage implements OnInit {
           return;
         }
         this.editandoId.set(receta.id);
+        // Primero los escalares (form.reset también limpia el FormArray)...
+        this.form.reset({
+          productoId: receta.productoId,
+          rendimiento: receta.rendimiento,
+          unidadLote: receta.unidadLote,
+        });
+        // El producto de una receta existente no se cambia.
+        this.form.controls.productoId.disable();
+        // ...y DESPUÉS se reconstruyen las filas con sus valores (si no, el
+        // reset anterior las dejaría vacías).
         this.ingredientes.clear();
         for (const ing of receta.ingredientes) {
           const g = this.grupoIngrediente();
@@ -220,13 +232,6 @@ export class RecetasPage implements OnInit {
           });
           this.ingredientes.push(g);
         }
-        this.form.reset({
-          productoId: receta.productoId,
-          rendimiento: receta.rendimiento,
-          unidadLote: receta.unidadLote,
-        });
-        // El producto de una receta existente no se cambia.
-        this.form.controls.productoId.disable();
         this.formVisible.set(true);
       },
       error: () => this.error('No se pudo cargar la receta.'),
