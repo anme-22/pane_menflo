@@ -690,5 +690,25 @@ ocultamiento de UI por rol en Angular.
       +1/−1 y saldo que cuadra]; datos de prueba limpiados. tests api[+3:
       registrarAjuste aumento/disminución/insuficiente — 52 total] + web[+1:
       ajustar — 34 total] verdes.)
+- [x] Mejora — Proveedor en compras
+      (Registrar A QUIÉN se le compra cada lote. Migración 20260619222612_proveedores:
+      tabla `proveedor` [nombre ÚNICO, telefono?, activo, timestamps; no se borra, se
+      desactiva] + columna NULLABLE `proveedor_id` en `compra` [FK ON DELETE SET NULL;
+      las compras viejas y "sin proveedor" siguen válidas] e índice. Backend:
+      ProveedoresModule [CRUD sin borrado; nombre único validado case-insensitive →
+      409 además del índice en BD; solo admin/super_admin, igual que compras].
+      ComprasService: acepta `proveedorId` OPCIONAL [valida que exista→404 y esté
+      activo→400], lo guarda, lo incluye en el DTO [proveedorId/proveedorNombre] y
+      permite filtrar GET /compras?proveedorId. libs/shared: ProveedorDto +
+      Crear/Actualizar; +proveedorId/proveedorNombre en CompraDto y proveedorId? en
+      CrearCompraRequest. Web: pantalla /proveedores en NAV_ITEMS [admin/super_admin]
+      con CRUD [tabla→tarjetas, alta/edición, activar/desactivar]; selector de
+      proveedor [opcional, con limpiar] en el alta de compra y columna Proveedor en el
+      listado. Verificado contra BD [e2e 9/9: crear, nombre duplicado case-insensitive
+      409, actualizar, compra con proveedor inexistente 404 / inactivo 400 / activo OK
+      trae proveedorNombre, compra sin proveedor → null, filtro por proveedor] + UI
+      [3/3: pantalla carga, alta aparece en tabla, selector en el form de compra];
+      datos de prueba limpiados. tests api[52, sin nuevos unit — cubierto por e2e] +
+      web[+3: proveedores service — 37 total] verdes.)
 - [ ] Feature 11 — Deploy
 - [ ] Feature 12 — Configuración

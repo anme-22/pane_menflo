@@ -24,6 +24,10 @@ export class CrearCompraDto implements CrearCompraRequest {
   costo!: number;
 
   @IsOptional()
+  @IsInt()
+  proveedorId?: number;
+
+  @IsOptional()
   @IsISO8601()
   fecha?: string;
 }

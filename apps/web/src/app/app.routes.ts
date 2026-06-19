@@ -50,6 +50,13 @@ export const appRoutes: Route[] = [
           import('./features/compras/compras').then((m) => m.ComprasPage),
       },
       {
+        path: 'proveedores',
+        // Catálogo de compras: solo admin/super_admin.
+        canActivate: [rolGuard('admin', 'super_admin')],
+        loadComponent: () =>
+          import('./features/proveedores/proveedores').then((m) => m.ProveedoresPage),
+      },
+      {
         path: 'recetas',
         // Gestión del negocio: solo admin/super_admin.
         canActivate: [rolGuard('admin', 'super_admin')],

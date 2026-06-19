@@ -16,10 +16,12 @@ import {
   type CompraDto,
   type CrearCompraRequest,
   type InsumoDto,
+  type ProveedorDto,
   type UnidadMedida,
 } from '@pane/shared';
 import { InsumosService } from '../insumos/insumos.service';
 import { UnidadesService } from '../insumos/unidades.service';
+import { ProveedoresService } from '../proveedores/proveedores.service';
 import { ComprasService } from './compras.service';
 
 const cantidadFmt = new Intl.NumberFormat('es-HN', { maximumFractionDigits: 4 });
@@ -58,12 +60,14 @@ export class ComprasPage implements OnInit {
   private readonly service = inject(ComprasService);
   private readonly insumosService = inject(InsumosService);
   private readonly unidadesService = inject(UnidadesService);
+  private readonly proveedoresService = inject(ProveedoresService);
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly toast = inject(MessageService);
 
   protected readonly compras = signal<CompraDto[]>([]);
   protected readonly insumos = signal<InsumoDto[]>([]);
   protected readonly unidades = signal<UnidadMedida[]>([]);
+  protected readonly proveedores = signal<ProveedorDto[]>([]);
   protected readonly cargando = signal(false);
   protected readonly guardando = signal(false);
 
@@ -76,11 +80,17 @@ export class ComprasPage implements OnInit {
     unidadCompraId: [null as number | null, [Validators.required]],
     cantidad: [null as number | null, [Validators.required, Validators.min(0.0001)]],
     costo: [null as number | null, [Validators.required, Validators.min(0.01)]],
+    proveedorId: [null as number | null],
   });
 
   /** Solo insumos activos pueden comprarse. */
   protected readonly insumosActivos = computed(() =>
     this.insumos().filter((i) => i.activo),
+  );
+
+  /** Solo proveedores activos para el selector. */
+  protected readonly proveedoresActivos = computed(() =>
+    this.proveedores().filter((p) => p.activo),
   );
 
   /** Unidades del mismo tipo que el insumo seleccionado. */
@@ -98,6 +108,10 @@ export class ComprasPage implements OnInit {
     this.insumosService.listar().subscribe({
       next: (i) => this.insumos.set(i),
       error: () => this.error('No se pudieron cargar los insumos.'),
+    });
+    this.proveedoresService.listar().subscribe({
+      next: (p) => this.proveedores.set(p),
+      error: () => this.error('No se pudieron cargar los proveedores.'),
     });
   }
 
@@ -122,6 +136,7 @@ export class ComprasPage implements OnInit {
       unidadCompraId: null,
       cantidad: null,
       costo: null,
+      proveedorId: null,
     });
     this.formVisible.set(true);
   }
@@ -162,6 +177,7 @@ export class ComprasPage implements OnInit {
       unidadCompraId: v.unidadCompraId as number,
       cantidad: v.cantidad as number,
       costo: v.costo as number,
+      proveedorId: v.proveedorId ?? undefined,
     };
     this.guardando.set(true);
     this.service.crear(data).subscribe({

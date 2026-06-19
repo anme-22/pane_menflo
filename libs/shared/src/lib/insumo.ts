@@ -76,6 +76,9 @@ export interface CompraDto {
   cantidadBase: string;
   /** Costo por unidad base del lote (= costo / cantidadBase). */
   costoPorUnidadBase: string;
+  /** Proveedor del lote (opcional; null si no se registró). */
+  proveedorId: number | null;
+  proveedorNombre: string | null;
 }
 
 /** Registrar una compra. `costo` es el TOTAL de la compra. */
@@ -84,6 +87,8 @@ export interface CrearCompraRequest {
   unidadCompraId: number;
   cantidad: number;
   costo: number;
+  /** Proveedor opcional del lote. */
+  proveedorId?: number;
   /** ISO opcional; si no viene, se usa la fecha actual. */
   fecha?: string;
 }
