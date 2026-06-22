@@ -1,0 +1,214 @@
+<p-toast />
+
+<section class="mx-auto max-w-6xl">
+  <div class="mb-4 flex items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-primary-600">Caja</h1>
+      <p class="text-sm text-muted">Apertura, ingresos/egresos y cierre con arqueo del efectivo.</p>
+    </div>
+    @if (!sesion() && !cargando()) {
+      <p-button label="Abrir caja" icon="pi pi-lock-open" (onClick)="abrirCaja()" />
+    }
+  </div>
+
+  <!-- Sesión abierta -->
+  @if (sesion(); as s) {
+    <div
+      class="rounded-xl border p-4 sm:p-6"
+      style="background-color: var(--surface-card); border-color: var(--surface-border)"
+    >
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p-tag [value]="estadoLabel(s.estado)" severity="success" />
+          <span class="ml-2 text-sm text-muted">Abierta {{ fechaTexto(s.abiertaEn) }} · {{ s.usuarioAperturaNombre }}</span>
+        </div>
+        <div class="flex gap-2">
+          <p-button label="Ingreso" icon="pi pi-arrow-down-left" severity="secondary" size="small" (onClick)="abrirMovimiento('INGRESO')" />
+          <p-button label="Egreso" icon="pi pi-arrow-up-right" severity="secondary" size="small" (onClick)="abrirMovimiento('EGRESO')" />
+          <p-button label="Cerrar caja" icon="pi pi-lock" severity="danger" size="small" (onClick)="abrirCerrar()" />
+        </div>
+      </div>
+
+      <!-- Desglose del efectivo esperado -->
+      <div class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:grid-cols-6">
+        <div class="rounded-lg border p-3" style="border-color: var(--surface-border)">
+          <div class="text-muted">Fondo inicial</div>
+          <div class="text-lg font-semibold">{{ dineroTexto(s.resumen.montoInicial) }}</div>
+        </div>
+        <div class="rounded-lg border p-3" style="border-color: var(--surface-border)">
+          <div class="text-muted">Ventas efectivo</div>
+          <div class="text-lg font-semibold">{{ dineroTexto(s.resumen.ventasContadoEfectivo) }}</div>
+        </div>
+        <div class="rounded-lg border p-3" style="border-color: var(--surface-border)">
+          <div class="text-muted">Abonos efectivo</div>
+          <div class="text-lg font-semibold">{{ dineroTexto(s.resumen.abonosEfectivo) }}</div>
+        </div>
+        <div class="rounded-lg border p-3" style="border-color: var(--surface-border)">
+          <div class="text-muted">Ingresos</div>
+          <div class="text-lg font-semibold">{{ dineroTexto(s.resumen.ingresos) }}</div>
+        </div>
+        <div class="rounded-lg border p-3" style="border-color: var(--surface-border)">
+          <div class="text-muted">Egresos</div>
+          <div class="text-lg font-semibold">−{{ dineroTexto(s.resumen.egresos) }}</div>
+        </div>
+        <div class="rounded-lg border-2 p-3" style="border-color: var(--color-primary-500)">
+          <div class="text-muted">Efectivo esperado</div>
+          <div class="text-lg font-bold text-primary-600">{{ dineroTexto(s.resumen.efectivoEsperado) }}</div>
+        </div>
+      </div>
+      @if (Number(s.resumen.ventasOtrosMetodos) > 0) {
+        <p class="mt-2 text-sm text-muted">
+          Ventas con tarjeta/transferencia (no efectivo): {{ dineroTexto(s.resumen.ventasOtrosMetodos) }}
+        </p>
+      }
+
+      <!-- Movimientos manuales -->
+      <h2 class="mt-6 mb-2 text-sm font-semibold">Movimientos del periodo</h2>
+      @if (s.movimientos.length) {
+        <div class="overflow-hidden rounded-lg border" style="border-color: var(--surface-border)">
+          <table class="w-full text-sm">
+            <thead><tr class="text-left text-muted">
+              <th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Tipo</th>
+              <th class="px-3 py-2">Concepto</th><th class="px-3 py-2">Quién</th>
+              <th class="px-3 py-2 text-right">Monto</th>
+            </tr></thead>
+            <tbody>
+              @for (m of s.movimientos; track m.id) {
+                <tr class="border-t" style="border-color: var(--surface-border)">
+                  <td class="px-3 py-2">{{ fechaTexto(m.fecha) }}</td>
+                  <td class="px-3 py-2">
+                    <p-tag [value]="tipoMovLabel(m.tipo)" [severity]="m.tipo === 'INGRESO' ? 'success' : 'danger'" />
+                  </td>
+                  <td class="px-3 py-2">{{ m.concepto }}</td>
+                  <td class="px-3 py-2">{{ m.usuarioNombre }}</td>
+                  <td class="px-3 py-2 text-right" [class.text-primary-600]="m.tipo === 'INGRESO'">
+                    {{ m.tipo === 'EGRESO' ? '−' : '' }}{{ dineroTexto(m.monto) }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <p class="text-sm text-muted">Sin ingresos/egresos manuales todavía.</p>
+      }
+    </div>
+  } @else if (!cargando()) {
+    <div
+      class="rounded-xl border p-8 text-center text-muted"
+      style="background-color: var(--surface-card); border-color: var(--surface-border)"
+    >
+      No hay una caja abierta. Ábrela para registrar el efectivo del día.
+    </div>
+  }
+
+  <!-- Histórico de cierres -->
+  <h2 class="mt-8 mb-2 text-lg font-semibold">Histórico de cajas</h2>
+  <div
+    class="overflow-hidden rounded-xl border"
+    style="background-color: var(--surface-card); border-color: var(--surface-border)"
+  >
+    <p-table
+      [value]="historico()"
+      [paginator]="historico().length > 10"
+      [rows]="10"
+      responsiveLayout="stack"
+      [breakpoint]="'640px'"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>#</th><th>Abierta</th><th>Cerrada</th><th>Estado</th>
+          <th class="text-right">Esperado</th><th class="text-right">Contado</th><th class="text-right">Diferencia</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-c>
+        <tr>
+          <td><span class="p-column-title font-medium sm:hidden">#</span>{{ c.id }}</td>
+          <td><span class="p-column-title font-medium sm:hidden">Abierta </span>{{ fechaTexto(c.abiertaEn) }}</td>
+          <td><span class="p-column-title font-medium sm:hidden">Cerrada </span>{{ fechaTexto(c.cerradaEn) }}</td>
+          <td>
+            <span class="p-column-title font-medium sm:hidden">Estado </span>
+            <p-tag [value]="estadoLabel(c.estado)" [severity]="c.estado === 'ABIERTA' ? 'success' : 'secondary'" />
+          </td>
+          <td class="text-right"><span class="p-column-title font-medium sm:hidden">Esperado </span>{{ dineroTexto(c.montoEsperado) }}</td>
+          <td class="text-right"><span class="p-column-title font-medium sm:hidden">Contado </span>{{ dineroTexto(c.montoContado) }}</td>
+          <td class="text-right">
+            <span class="p-column-title font-medium sm:hidden">Diferencia </span>
+            @if (c.diferencia !== null) {
+              <p-tag [value]="dineroTexto(c.diferencia)" [severity]="sevDiferencia(c.diferencia)" />
+            } @else { — }
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr><td colspan="7" class="p-4 text-center text-muted">No hay cajas registradas todavía.</td></tr>
+      </ng-template>
+    </p-table>
+  </div>
+</section>
+
+<!-- Diálogo: abrir caja -->
+<p-dialog [visible]="abrirVisible()" (visibleChange)="abrirVisible.set($event)" [modal]="true" [style]="{ width: '26rem' }" header="Abrir caja" [dismissableMask]="true">
+  <div class="flex flex-col gap-4 pt-2">
+    <div class="flex flex-col gap-1">
+      <label for="montoInicial" class="text-sm font-medium">Fondo inicial (efectivo de cambio)</label>
+      <p-inputnumber inputId="montoInicial" [ngModel]="montoInicial()" (ngModelChange)="montoInicial.set($event)" mode="currency" currency="HNL" locale="es-HN" [min]="0" styleClass="w-full" inputStyleClass="w-full" />
+    </div>
+    <div class="mt-1 flex justify-end gap-2">
+      <p-button type="button" label="Cancelar" severity="secondary" [text]="true" (onClick)="abrirVisible.set(false)" />
+      <p-button type="button" label="Abrir" icon="pi pi-lock-open" [loading]="guardando()" (onClick)="guardarAbrir()" />
+    </div>
+  </div>
+</p-dialog>
+
+<!-- Diálogo: ingreso / egreso -->
+<p-dialog [visible]="movVisible()" (visibleChange)="movVisible.set($event)" [modal]="true" [style]="{ width: '28rem' }" [header]="tipoMovLabel(movTipo()) + ' de efectivo'" [dismissableMask]="true">
+  <div class="flex flex-col gap-4 pt-2">
+    <div class="flex flex-col gap-1">
+      <label class="text-sm font-medium">Tipo</label>
+      <p-select [ngModel]="movTipo()" (ngModelChange)="movTipo.set($event)" [options]="tiposMovimiento" optionLabel="label" optionValue="value" appendTo="body" styleClass="w-full" />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label for="movMonto" class="text-sm font-medium">Monto</label>
+      <p-inputnumber inputId="movMonto" [ngModel]="movMonto()" (ngModelChange)="movMonto.set($event)" mode="currency" currency="HNL" locale="es-HN" [min]="0" styleClass="w-full" inputStyleClass="w-full" />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label for="movConcepto" class="text-sm font-medium">Concepto</label>
+      <input id="movConcepto" pInputText [ngModel]="movConcepto()" (ngModelChange)="movConcepto.set($event)" placeholder="Ej. Pago a proveedor, retiro…" class="w-full" />
+    </div>
+    <div class="mt-1 flex justify-end gap-2">
+      <p-button type="button" label="Cancelar" severity="secondary" [text]="true" (onClick)="movVisible.set(false)" />
+      <p-button type="button" label="Registrar" icon="pi pi-check" [loading]="guardando()" (onClick)="guardarMovimiento()" />
+    </div>
+  </div>
+</p-dialog>
+
+<!-- Diálogo: cerrar caja -->
+<p-dialog [visible]="cerrarVisible()" (visibleChange)="cerrarVisible.set($event)" [modal]="true" [style]="{ width: '30rem' }" header="Cerrar caja" [dismissableMask]="true">
+  @if (sesion(); as s) {
+    <div class="flex flex-col gap-4 pt-2">
+      <div class="grid grid-cols-2 gap-2 text-sm">
+        <span class="text-muted">Efectivo esperado</span>
+        <span class="text-right font-semibold">{{ dineroTexto(s.resumen.efectivoEsperado) }}</span>
+      </div>
+      <div class="flex flex-col gap-1">
+        <label for="contado" class="text-sm font-medium">Efectivo contado (físico)</label>
+        <p-inputnumber inputId="contado" [ngModel]="montoContado()" (ngModelChange)="montoContado.set($event)" mode="currency" currency="HNL" locale="es-HN" [min]="0" styleClass="w-full" inputStyleClass="w-full" />
+      </div>
+      @if (diferenciaPreview() !== null) {
+        <div class="flex items-center justify-between rounded-lg border p-3" style="border-color: var(--surface-border)">
+          <span class="text-sm font-medium">Diferencia</span>
+          <p-tag [value]="dineroTexto(diferenciaPreview())" [severity]="sevDiferencia(diferenciaPreview())" />
+        </div>
+      }
+      <div class="flex flex-col gap-1">
+        <label for="obs" class="text-sm font-medium">Observación (opcional)</label>
+        <input id="obs" pInputText [ngModel]="observacion()" (ngModelChange)="observacion.set($event)" placeholder="Motivo de la diferencia, notas…" class="w-full" />
+      </div>
+      <div class="mt-1 flex justify-end gap-2">
+        <p-button type="button" label="Cancelar" severity="secondary" [text]="true" (onClick)="cerrarVisible.set(false)" />
+        <p-button type="button" label="Cerrar caja" icon="pi pi-lock" severity="danger" [loading]="guardando()" (onClick)="guardarCerrar()" />
+      </div>
+    </div>
+  }
+</p-dialog>

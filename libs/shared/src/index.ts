@@ -11,3 +11,4 @@ export * from './lib/factura';
 export * from './lib/reporte';
 export * from './lib/costo-indirecto';
 export * from './lib/proveedor';
+export * from './lib/caja';

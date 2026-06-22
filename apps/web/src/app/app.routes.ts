@@ -77,6 +77,12 @@ export const appRoutes: Route[] = [
           import('./features/facturas/facturas').then((m) => m.FacturasPage),
       },
       {
+        path: 'caja',
+        // Caja / Arqueo: cualquier autenticado (el vendedor es el cajero).
+        loadComponent: () =>
+          import('./features/caja/caja').then((m) => m.CajaPage),
+      },
+      {
         path: 'reportes',
         // Gestión/ganancias: solo admin/super_admin.
         canActivate: [rolGuard('admin', 'super_admin')],

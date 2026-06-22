@@ -21,6 +21,7 @@ import { FacturasModule } from './facturas/facturas.module';
 import { ReportesModule } from './reportes/reportes.module';
 import { CostosIndirectosModule } from './costos-indirectos/costos-indirectos.module';
 import { ProveedoresModule } from './proveedores/proveedores.module';
+import { CajaModule } from './caja/caja.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { ProveedoresModule } from './proveedores/proveedores.module';
     ReportesModule,
     CostosIndirectosModule,
     ProveedoresModule,
+    CajaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

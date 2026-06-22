@@ -34,6 +34,8 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Producción', icon: 'pi pi-cog', route: '/produccion', roles: ['admin', 'super_admin'] },
   // Facturas: venta; la usan los tres roles (el vendedor incluido).
   { label: 'Facturas', icon: 'pi pi-receipt', route: '/facturas' },
+  // Caja / Arqueo: la operan los tres roles (el vendedor es el cajero).
+  { label: 'Caja', icon: 'pi pi-wallet', route: '/caja' },
   // Reportes: gestión/ganancias, solo admin/super_admin.
   { label: 'Reportes', icon: 'pi pi-chart-line', route: '/reportes', roles: ['admin', 'super_admin'] },
   // Costos indirectos: afectan el costo por bolsa; solo admin/super_admin.
