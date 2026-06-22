@@ -733,5 +733,40 @@ ocultamiento de UI por rol en Angular.
       visible en contado]; datos de prueba limpiados [facturas de prueba borradas].
       tests api[+1: emitir contado sin método 400 — 53 total] + web[37 total, cubierto
       por e2e] verdes.)
+- [x] Mejora — Arqueo / cierre de caja
+      (Sesión de caja completa: abre con un fondo, acumula el efectivo del periodo y
+      cierra contando el efectivo físico contra el esperado, con la diferencia.
+      Depende de F9 (facturas/abonos) y F4 (método de pago, para distinguir efectivo).
+      Migración 20260622170836_arqueo_caja: 2 enums (EstadoCaja ABIERTA/CERRADA,
+      TipoMovimientoCaja INGRESO/EGRESO) + tablas `caja_sesion` [montoInicial,
+      usuarioApertura, abiertaEn; al cerrar congela montoContado/montoEsperado/
+      diferencia/usuarioCierre/cerradaEn/observacion; sucursalId default] y
+      `movimiento_caja` [INMUTABLE: solo ingresos/egresos MANUALES — retiros, pago a
+      proveedor en efectivo…; cajaSesionId, tipo, monto, concepto, usuario]. CHECKs
+      monto_inicial≥0, monto_contado≥0, monto>0 e ÍNDICE ÚNICO PARCIAL [una sola
+      sesión ABIERTA por sucursal] añadido a mano en el SQL (--create-only). DECISIONES
+      con el usuario: incluir abonos de crédito en efectivo en el esperado; los 3 roles
+      operan la caja (el vendedor es el cajero); movimientos inmutables (se corrigen con
+      el inverso). Backend (SOLID-S): CajaService reutiliza SucursalesService (DI) y
+      CALCULA el esperado por VENTANA de tiempo [abiertaEn, cerradaEn ?? ahora) sin
+      acoplar la factura a la caja: esperado = montoInicial + Σ ventas CONTADO Efectivo
+      (emitidaEn en ventana) + Σ abonos Efectivo (fecha en ventana) + Σ ingresos − Σ
+      egresos; las ventas con tarjeta/transferencia se reportan aparte (informativo, NO
+      suman). abrir [409 si ya hay una abierta], registrarMovimiento [400 si la caja no
+      está ABIERTA], cerrar [congela esperado/contado/diferencia]. Endpoints GET
+      /caja/actual|/caja|/caja/:id, POST /caja/abrir, /caja/:id/movimientos,
+      /caja/:id/cerrar; solo JwtAuthGuard (3 roles); autoría por @CurrentUser. libs/
+      shared: CajaSesionDto/ResumenDto, MovimientoCajaDto, CajaResumenDto [desglose],
+      enums+labels, DTOs Abrir/Movimiento/Cerrar. Web: /caja en NAV_ITEMS [todos],
+      pantalla con sesión abierta (desglose en vivo, movimientos), abrir/ingreso/egreso/
+      cerrar (diferencia en vivo en el cierre) e histórico de cierres tabla→tarjetas;
+      zoneless con signals+ngModel. Verificado contra BD [e2e 22/22: esperado inicial
+      100, 2ª apertura 409, ventas efectivo y abonos efectivo (≤ saldo) en ventana,
+      ingreso 50/egreso 30, esperado 132.5, monto 0 y tipo inválido 400, cerrar congela
+      y diferencia 0, tras cerrar actual=null, cerrar/mover cerrada 400, diferencia
+      faltante −20] y UI [pantalla, estado vacío, diálogo de apertura]; datos de prueba
+      limpiados [tablas de caja vacías, facturas de prueba borradas]. tests api[+4:
+      fórmula del esperado, null, 409, 400 — 57 total] + web[+4: caja service — 41
+      total] verdes.)
 - [ ] Feature 11 — Deploy
 - [ ] Feature 12 — Configuración

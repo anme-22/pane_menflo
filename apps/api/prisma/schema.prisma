@@ -93,8 +93,11 @@ model Usuario {
   creadoEn      DateTime   @default(now()) @map("creado_en")
   actualizadoEn DateTime   @updatedAt @map("actualizado_en")
 
-  facturas  Factura[]
-  bitacoras FacturaBitacora[]
+  facturas         Factura[]
+  bitacoras        FacturaBitacora[]
+  cajasAbiertas    CajaSesion[]     @relation("CajaApertura")
+  cajasCerradas    CajaSesion[]     @relation("CajaCierre")
+  movimientosCaja  MovimientoCaja[]
 
   @@map("usuario")
   @@schema("public")
@@ -167,11 +170,12 @@ model Sucursal {
   activa    Boolean  @default(true)
   creadaEn  DateTime @default(now()) @map("creada_en")
 
-  compras     Compra[]
-  existencias Existencia[]
-  ordenes     OrdenProduccion[]
-  movimientos MovimientoInventario[]
-  facturas    Factura[]
+  compras      Compra[]
+  existencias  Existencia[]
+  ordenes      OrdenProduccion[]
+  movimientos  MovimientoInventario[]
+  facturas     Factura[]
+  cajaSesiones CajaSesion[]
 
   @@map("sucursal")
   @@schema("public")
@@ -562,5 +566,74 @@ model FacturaBitacora {
 
   @@index([facturaId])
   @@map("factura_bitacora")
+  @@schema("public")
+}
+
+/// Estado de una sesión de caja (arqueo). ABIERTA: acumula movimientos. CERRADA:
+/// terminal, con el conteo físico, el esperado y la diferencia congelados.
+enum EstadoCaja {
+  ABIERTA
+  CERRADA
+
+  @@schema("public")
+}
+
+/// Tipo de movimiento manual de caja: dinero que entra (INGRESO) o sale (EGRESO)
+/// de la gaveta y que NO es una venta (retiros, pago a proveedor en efectivo…).
+enum TipoMovimientoCaja {
+  INGRESO
+  EGRESO
+
+  @@schema("public")
+}
+
+/// Sesión de caja (arqueo). Abre con un fondo (montoInicial), acumula el efectivo
+/// del periodo y se cierra contando el efectivo físico contra el esperado. El
+/// esperado/diferencia se CALCULAN al cerrar y se congelan. Una sola sesión
+/// ABIERTA por sucursal a la vez (índice único parcial). No se borra.
+model CajaSesion {
+  id                Int        @id @default(autoincrement())
+  sucursalId        Int        @map("sucursal_id")
+  estado            EstadoCaja @default(ABIERTA)
+  montoInicial      Decimal    @map("monto_inicial") @db.Decimal(12, 2)
+  usuarioAperturaId Int        @map("usuario_apertura_id")
+  abiertaEn         DateTime   @default(now()) @map("abierta_en")
+  // Congelados al cerrar:
+  montoContado      Decimal?   @map("monto_contado") @db.Decimal(12, 2)
+  montoEsperado     Decimal?   @map("monto_esperado") @db.Decimal(12, 2)
+  diferencia        Decimal?   @db.Decimal(12, 2)
+  usuarioCierreId   Int?       @map("usuario_cierre_id")
+  cerradaEn         DateTime?  @map("cerrada_en")
+  observacion       String?    @db.VarChar(300)
+  creadoEn          DateTime   @default(now()) @map("creado_en")
+
+  sucursal        Sucursal         @relation(fields: [sucursalId], references: [id])
+  usuarioApertura Usuario          @relation("CajaApertura", fields: [usuarioAperturaId], references: [id])
+  usuarioCierre   Usuario?         @relation("CajaCierre", fields: [usuarioCierreId], references: [id])
+  movimientos     MovimientoCaja[]
+
+  @@index([sucursalId])
+  @@index([estado])
+  @@map("caja_sesion")
+  @@schema("public")
+}
+
+/// Movimiento manual de caja (ingreso/egreso de efectivo que NO es venta). Las
+/// ventas y abonos en efectivo NO se duplican aquí: se calculan por ventana de
+/// tiempo al cerrar. INMUTABLE: un movimiento erróneo se corrige con su inverso.
+model MovimientoCaja {
+  id           Int                @id @default(autoincrement())
+  cajaSesionId Int                @map("caja_sesion_id")
+  tipo         TipoMovimientoCaja
+  monto        Decimal            @db.Decimal(12, 2)
+  concepto     String             @db.VarChar(200)
+  usuarioId    Int                @map("usuario_id")
+  fecha        DateTime           @default(now())
+
+  cajaSesion CajaSesion @relation(fields: [cajaSesionId], references: [id])
+  usuario    Usuario    @relation(fields: [usuarioId], references: [id])
+
+  @@index([cajaSesionId])
+  @@map("movimiento_caja")
   @@schema("public")
 }
