@@ -710,5 +710,28 @@ ocultamiento de UI por rol en Angular.
       [3/3: pantalla carga, alta aparece en tabla, selector en el form de compra];
       datos de prueba limpiados. tests api[52, sin nuevos unit — cubierto por e2e] +
       web[+3: proveedores service — 37 total] verdes.)
+- [x] Mejora — Método de pago en contado
+      (Registrar CÓMO se pagó una venta de CONTADO; alimenta el arqueo futuro [#5].
+      Las de CRÉDITO ya guardan el método por abono [abono.metodo], así que esto solo
+      aplica a contado. Migración 20260622161121_metodo_pago_factura: columna NULLABLE
+      `metodo_pago` VARCHAR(30) en `factura` [las facturas viejas quedan con NULL,
+      compatibles]. Métodos: Efectivo/Tarjeta/Transferencia/Cheque [const METODOS_PAGO
+      = METODOS_ABONO en libs/shared]. Backend: FacturasService.resolverMetodoPago
+      [SOLID-S helper] EXIGE método si tipoPago=CONTADO [400 si falta] y lo fuerza a
+      NULL en crédito; se aplica al crear y al actualizar [si pasa de crédito→contado
+      exige método; de contado→crédito lo limpia]. Cambiar el método en una EMITIDA
+      exige motivo y deja una fila de bitácora [campo "metodoPago", igual que tipoPago].
+      Guard extra al EMITIR: un contado sin método → 400. DTO valida @IsIn(METODOS_PAGO)
+      cuando viene; mapper expone metodoPago. libs/shared: +metodoPago en FacturaDto y
+      en Crear/ActualizarFacturaRequest + const METODOS_PAGO. Web: en el editor de
+      factura, selector "Método de pago" visible SOLO en contado [computed esContado
+      sobre el signal del form, zoneless], default Efectivo; se envía solo en contado;
+      el detalle y la impresión muestran "Pago: Contado · Efectivo". Verificado contra
+      BD [e2e 13/13: crear contado con método guarda Tarjeta, contado sin método 400,
+      método inválido 400, crédito ignora el método → null, emitir conserva el método,
+      editar método en EMITIDA con motivo → bitácora Tarjeta→Efectivo] y UI [selector
+      visible en contado]; datos de prueba limpiados [facturas de prueba borradas].
+      tests api[+1: emitir contado sin método 400 — 53 total] + web[37 total, cubierto
+      por e2e] verdes.)
 - [ ] Feature 11 — Deploy
 - [ ] Feature 12 — Configuración

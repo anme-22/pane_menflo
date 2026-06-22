@@ -35,6 +35,9 @@ export const ESTADO_PAGO_LABEL: Record<EstadoPago, string> = {
 /** Métodos de abono sugeridos (texto libre en la BD). */
 export const METODOS_ABONO = ['Efectivo', 'Tarjeta', 'Transferencia', 'Cheque'] as const;
 
+/** Métodos de pago para ventas de CONTADO (los mismos que los abonos). */
+export const METODOS_PAGO = METODOS_ABONO;
+
 /** Línea de factura con su snapshot y totales calculados. */
 export interface FacturaDetalleDto {
   id: number;
@@ -84,6 +87,8 @@ export interface FacturaDto {
   usuarioNombre: string;
   estado: EstadoFactura;
   tipoPago: TipoPago;
+  /** Cómo se pagó (solo CONTADO; null en crédito). */
+  metodoPago: string | null;
   fecha: string;
   subtotal: string;
   impuesto: string;
@@ -130,6 +135,8 @@ export interface LineaFacturaInput {
 export interface CrearFacturaRequest {
   clienteIdentidad?: string | null;
   tipoPago: TipoPago;
+  /** Método de pago. Obligatorio si `tipoPago` es CONTADO; ignorado en crédito. */
+  metodoPago?: string;
   items: LineaFacturaInput[];
 }
 
@@ -140,6 +147,8 @@ export interface CrearFacturaRequest {
 export interface ActualizarFacturaRequest {
   clienteIdentidad?: string | null;
   tipoPago?: TipoPago;
+  /** Método de pago (CONTADO). Cambiarlo en una EMITIDA exige `motivo`. */
+  metodoPago?: string;
   items?: LineaFacturaInput[];
   /** Obligatorio si la factura ya está EMITIDA. */
   motivo?: string;

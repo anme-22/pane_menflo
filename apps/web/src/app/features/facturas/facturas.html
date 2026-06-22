@@ -118,6 +118,20 @@
           styleClass="w-full"
         />
       </div>
+      @if (esContado()) {
+        <div class="flex flex-col gap-1">
+          <label for="metodoPago" class="text-sm font-medium">Método de pago</label>
+          <p-select
+            inputId="metodoPago"
+            formControlName="metodoPago"
+            [options]="metodosPago"
+            optionLabel="label"
+            optionValue="value"
+            appendTo="body"
+            styleClass="w-full"
+          />
+        </div>
+      }
     </div>
 
     <div class="flex flex-col gap-2">
@@ -253,6 +267,7 @@
           <span><span class="text-muted">Fecha:</span> {{ fechaTexto(f.fecha) }}</span>
           <span><span class="text-muted">Cliente:</span> {{ f.clienteNombre ?? 'Consumidor final' }}</span>
           <span><span class="text-muted">Vendedor:</span> {{ f.usuarioNombre }}</span>
+          <span><span class="text-muted">Pago:</span> {{ tipoPagoLabel(f.tipoPago) }}@if (f.metodoPago) { · {{ f.metodoPago }} }</span>
         </div>
         <div class="flex flex-col items-end gap-2">
           <p-tag [value]="estadoLabel(f.estado)" [severity]="sevEstado(f.estado)" />

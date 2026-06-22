@@ -19,6 +19,7 @@ import {
   ESTADO_FACTURA_LABEL,
   ESTADO_PAGO_LABEL,
   METODOS_ABONO,
+  METODOS_PAGO,
   TIPO_PAGO_LABEL,
   type ClienteDto,
   type ConfiguracionDto,
@@ -89,6 +90,7 @@ export class FacturasPage implements OnInit {
     { label: TIPO_PAGO_LABEL.CREDITO, value: 'CREDITO' },
   ];
   protected readonly metodosAbono = METODOS_ABONO.map((m) => ({ label: m, value: m }));
+  protected readonly metodosPago = METODOS_PAGO.map((m) => ({ label: m, value: m }));
 
   // --- editor borrador / editar ---
   protected readonly formVisible = signal(false);
@@ -97,10 +99,17 @@ export class FacturasPage implements OnInit {
   protected readonly form = this.fb.group({
     clienteIdentidad: [null as string | null],
     tipoPago: ['CONTADO' as 'CONTADO' | 'CREDITO', [Validators.required]],
+    metodoPago: ['Efectivo' as string],
     motivo: [''],
     items: this.fb.array([this.grupoLinea()]),
   });
   private readonly formValor = toSignal(this.form.valueChanges);
+
+  /** En el editor, ¿la venta es de contado? (muestra el método de pago). */
+  protected readonly esContado = computed(() => {
+    this.formValor();
+    return this.form.controls.tipoPago.value === 'CONTADO';
+  });
 
   // --- detalle / imprimir ---
   protected readonly detalleVisible = signal(false);
@@ -218,7 +227,12 @@ export class FacturasPage implements OnInit {
     this.editandoEstado.set(null);
     // Resetear los escalares ANTES de tocar el FormArray (form.reset también
     // resetea `items`); las líneas se (re)construyen al final.
-    this.form.reset({ clienteIdentidad: null, tipoPago: 'CONTADO', motivo: '' });
+    this.form.reset({
+      clienteIdentidad: null,
+      tipoPago: 'CONTADO',
+      metodoPago: 'Efectivo',
+      motivo: '',
+    });
     this.items.clear();
     this.items.push(this.grupoLinea());
     this.formVisible.set(true);
@@ -237,6 +251,7 @@ export class FacturasPage implements OnInit {
         this.form.reset({
           clienteIdentidad: f.clienteIdentidad,
           tipoPago: f.tipoPago,
+          metodoPago: f.metodoPago ?? 'Efectivo',
           motivo: '',
         });
         // ...y DESPUÉS se reconstruyen las líneas con sus valores.
@@ -277,10 +292,18 @@ export class FacturasPage implements OnInit {
       return;
     }
 
+    // El método de pago solo aplica a contado (el crédito lo lleva por abono).
+    const metodoPago = v.tipoPago === 'CONTADO' ? v.metodoPago : undefined;
+
     this.guardando.set(true);
     if (id === null) {
       this.service
-        .crear({ clienteIdentidad: v.clienteIdentidad, tipoPago: v.tipoPago, items })
+        .crear({
+          clienteIdentidad: v.clienteIdentidad,
+          tipoPago: v.tipoPago,
+          metodoPago,
+          items,
+        })
         .subscribe({
           next: () => this.alGuardar('Borrador creado.'),
           error: (e) => this.alFallar(e),
@@ -290,6 +313,7 @@ export class FacturasPage implements OnInit {
         .actualizar(id, {
           clienteIdentidad: v.clienteIdentidad,
           tipoPago: v.tipoPago,
+          metodoPago,
           items,
           motivo: v.motivo.trim() || undefined,
         })
@@ -418,7 +442,7 @@ export class FacturasPage implements OnInit {
       <h1>🥖 Panadería</h1>
       <div>Factura <strong>${numero}</strong> · ${fecha.format(new Date(f.fecha))}</div>
       <div>Cliente: ${cliente}</div>
-      <div>Tipo de pago: ${TIPO_PAGO_LABEL[f.tipoPago]} · Estado: ${ESTADO_FACTURA_LABEL[f.estado]}</div>
+      <div>Tipo de pago: ${TIPO_PAGO_LABEL[f.tipoPago]}${f.metodoPago ? ` (${f.metodoPago})` : ''} · Estado: ${ESTADO_FACTURA_LABEL[f.estado]}</div>
       <table><thead><tr><th>Producto</th><th style="text-align:right">Cant.</th>
       <th style="text-align:right">P. unit.</th><th style="text-align:right">Total</th></tr></thead>
       <tbody>${filas}</tbody></table>

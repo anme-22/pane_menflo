@@ -479,6 +479,9 @@ model Factura {
   usuarioId        Int           @map("usuario_id")
   estado           EstadoFactura @default(BORRADOR)
   tipoPago         TipoPago      @default(CONTADO) @map("tipo_pago")
+  // Cómo se pagó una venta de CONTADO (Efectivo/Tarjeta/...). NULL en crédito
+  // (ahí el método va por abono). Alimenta el arqueo de caja.
+  metodoPago       String?       @map("metodo_pago") @db.VarChar(30)
   fecha            DateTime      @default(now())
   subtotal         Decimal       @default(0) @db.Decimal(12, 2)
   impuesto         Decimal       @default(0) @db.Decimal(12, 2)

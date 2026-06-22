@@ -36,4 +36,15 @@ describe('FacturasService', () => {
     const service = servicioCon({ id: 1, estado: 'EMITIDA', detalles: [{ id: 1 }] });
     await expect(service.emitir(1, 1)).rejects.toThrow(/borrador/i);
   });
+
+  it('emitir una venta de contado sin método de pago -> 400', async () => {
+    const service = servicioCon({
+      id: 1,
+      estado: 'BORRADOR',
+      tipoPago: 'CONTADO',
+      metodoPago: null,
+      detalles: [{ id: 1 }],
+    });
+    await expect(service.emitir(1, 1)).rejects.toThrow(/método de pago/i);
+  });
 });

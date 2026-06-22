@@ -9,6 +9,7 @@ import {
   MaxLength,
   ValidateNested,
 } from 'class-validator';
+import { METODOS_PAGO } from '@pane/shared';
 import type { ActualizarFacturaRequest, TipoPago } from '@pane/shared';
 import { LineaFacturaDto } from './linea-factura.dto';
 
@@ -24,6 +25,10 @@ export class ActualizarFacturaDto implements ActualizarFacturaRequest {
   @IsOptional()
   @IsIn(['CONTADO', 'CREDITO'], { message: 'El tipo de pago debe ser CONTADO o CREDITO.' })
   tipoPago?: TipoPago;
+
+  @IsOptional()
+  @IsIn(METODOS_PAGO, { message: 'Método de pago no válido.' })
+  metodoPago?: string;
 
   @IsOptional()
   @IsArray()
