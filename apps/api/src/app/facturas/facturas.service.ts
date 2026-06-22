@@ -9,6 +9,7 @@ import type {
   FacturaDto,
   FacturaResumenDto,
   LineaFacturaInput,
+  TipoPago,
 } from '@pane/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { SucursalesService } from '../sucursales/sucursales.service';
@@ -94,6 +95,7 @@ export class FacturasService {
         clienteIdentidad: dto.clienteIdentidad ?? null,
         usuarioId,
         tipoPago: dto.tipoPago,
+        metodoPago: this.resolverMetodoPago(dto.tipoPago, dto.metodoPago),
         estado: 'BORRADOR',
         subtotal: totales.subtotal,
         impuesto: totales.impuesto,
@@ -138,6 +140,22 @@ export class FacturasService {
       : null;
     const totales = lineas ? this.calcular(lineas) : null;
 
+    // Resuelve el método de pago según el tipoPago final. undefined = sin cambio.
+    const tipoFinal = dto.tipoPago ?? factura.tipoPago;
+    let nuevoMetodo: string | null | undefined = undefined;
+    if (tipoFinal === 'CREDITO') {
+      // El crédito no lleva método en la factura (va por abono); se limpia.
+      if (factura.metodoPago !== null) {
+        nuevoMetodo = null;
+      }
+    } else if (dto.metodoPago !== undefined) {
+      nuevoMetodo = this.resolverMetodoPago('CONTADO', dto.metodoPago);
+    } else if (dto.tipoPago === 'CONTADO' && factura.tipoPago === 'CREDITO') {
+      // Pasó a contado sin enviar método: exige uno (antes no tenía).
+      nuevoMetodo = this.resolverMetodoPago('CONTADO', factura.metodoPago ?? undefined);
+    }
+    const cambiaMetodo = nuevoMetodo !== undefined && nuevoMetodo !== factura.metodoPago;
+
     // Bitácora: solo para EMITIDA, una fila por campo cambiado.
     const entradas: EntradaBitacora[] = [];
     if (emitida) {
@@ -160,6 +178,14 @@ export class FacturasService {
           motivo: dto.motivo,
         });
       }
+      if (cambiaMetodo) {
+        entradas.push({
+          campo: 'metodoPago',
+          valorAnterior: factura.metodoPago,
+          valorNuevo: nuevoMetodo ?? null,
+          motivo: dto.motivo,
+        });
+      }
       if (lineas && totales) {
         entradas.push({
           campo: 'detalles',
@@ -179,6 +205,7 @@ export class FacturasService {
               ? dto.clienteIdentidad ?? null
               : undefined,
           tipoPago: dto.tipoPago ?? undefined,
+          metodoPago: nuevoMetodo,
           ...(totales
             ? {
                 subtotal: totales.subtotal,
@@ -213,6 +240,11 @@ export class FacturasService {
     }
     if (factura.detalles.length === 0) {
       throw new BadRequestException('La factura no tiene líneas.');
+    }
+    if (factura.tipoPago === 'CONTADO' && !factura.metodoPago) {
+      throw new BadRequestException(
+        'Una venta de contado requiere indicar el método de pago antes de emitir.',
+      );
     }
 
     const config = await this.configuracion.obtener();
@@ -327,6 +359,26 @@ export class FacturasService {
   }
 
   // ---- helpers privados ----
+
+  /**
+   * Resuelve el método de pago a guardar según el tipo de pago. El crédito no
+   * lleva método en la factura (va por abono) → null; el contado lo EXIGE.
+   */
+  private resolverMetodoPago(
+    tipoPago: TipoPago,
+    metodoPago?: string,
+  ): string | null {
+    if (tipoPago === 'CREDITO') {
+      return null;
+    }
+    const metodo = metodoPago?.trim();
+    if (!metodo) {
+      throw new BadRequestException(
+        'Una venta de contado requiere indicar el método de pago.',
+      );
+    }
+    return metodo;
+  }
 
   /** Si viene clienteIdentidad, valida que el cliente exista (error amable). */
   private async validarCliente(identidad?: string | null): Promise<void> {

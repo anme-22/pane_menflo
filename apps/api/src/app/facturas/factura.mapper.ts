@@ -71,6 +71,7 @@ export function toFacturaDto(f: FacturaConRelaciones): FacturaDto {
     usuarioNombre: f.usuario?.nombre ?? '',
     estado: f.estado,
     tipoPago: f.tipoPago,
+    metodoPago: f.metodoPago,
     fecha: f.fecha.toISOString(),
     subtotal: f.subtotal.toString(),
     impuesto: f.impuesto.toString(),
