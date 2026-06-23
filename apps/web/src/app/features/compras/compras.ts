@@ -1,5 +1,6 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import {
+  FormsModule,
   NonNullableFormBuilder,
   ReactiveFormsModule,
   Validators,
@@ -9,10 +10,11 @@ import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { MessageService } from 'primeng/api';
 import { SelectModule } from 'primeng/select';
-import { TableModule } from 'primeng/table';
+import { TableModule, type TableLazyLoadEvent } from 'primeng/table';
 import { ToastModule } from 'primeng/toast';
 import {
   ABREVIATURA_BASE,
+  PAGE_SIZE_DEFAULT,
   type CompraDto,
   type CrearCompraRequest,
   type InsumoDto,
@@ -46,6 +48,7 @@ const fecha = new Intl.DateTimeFormat('es-HN', { dateStyle: 'medium' });
   selector: 'app-compras',
   imports: [
     ReactiveFormsModule,
+    FormsModule,
     TableModule,
     ButtonModule,
     DialogModule,
@@ -70,6 +73,15 @@ export class ComprasPage implements OnInit {
   protected readonly proveedores = signal<ProveedorDto[]>([]);
   protected readonly cargando = signal(false);
   protected readonly guardando = signal(false);
+
+  // --- paginación + filtros (servidor) ---
+  protected readonly total = signal(0);
+  protected readonly first = signal(0);
+  protected readonly rows = signal(PAGE_SIZE_DEFAULT);
+  protected readonly filtroInsumoId = signal<number | null>(null);
+  protected readonly filtroProveedorId = signal<number | null>(null);
+  protected readonly filtroDesde = signal('');
+  protected readonly filtroHasta = signal('');
 
   protected readonly formVisible = signal(false);
   /** Insumo seleccionado (para filtrar unidades y el preview). */
@@ -100,7 +112,7 @@ export class ComprasPage implements OnInit {
   });
 
   ngOnInit(): void {
-    this.cargar();
+    // El listado lo dispara la tabla (lazy); aquí, las opciones de los selects.
     this.unidadesService.listar().subscribe({
       next: (u) => this.unidades.set(u),
       error: () => this.error('No se pudieron cargar las unidades.'),
@@ -115,18 +127,42 @@ export class ComprasPage implements OnInit {
     });
   }
 
+  /** Recarga la página actual desde el servidor con los filtros vigentes. */
   cargar(): void {
     this.cargando.set(true);
-    this.service.listar().subscribe({
-      next: (data) => {
-        this.compras.set(data);
-        this.cargando.set(false);
-      },
-      error: () => {
-        this.cargando.set(false);
-        this.error('No se pudieron cargar las compras.');
-      },
-    });
+    this.service
+      .listar({
+        page: Math.floor(this.first() / this.rows()) + 1,
+        pageSize: this.rows(),
+        insumoId: this.filtroInsumoId() ?? undefined,
+        proveedorId: this.filtroProveedorId() ?? undefined,
+        desde: this.filtroDesde() || undefined,
+        hasta: this.filtroHasta() || undefined,
+      })
+      .subscribe({
+        next: (res) => {
+          this.compras.set(res.items);
+          this.total.set(res.total);
+          this.cargando.set(false);
+        },
+        error: () => {
+          this.cargando.set(false);
+          this.error('No se pudieron cargar las compras.');
+        },
+      });
+  }
+
+  /** La tabla (lazy) dispara esto al iniciar y al cambiar de página. */
+  onLazy(e: TableLazyLoadEvent): void {
+    this.first.set(e.first ?? 0);
+    this.rows.set(e.rows ?? PAGE_SIZE_DEFAULT);
+    this.cargar();
+  }
+
+  /** Reinicia a la primera página y recarga (al cambiar un filtro). */
+  aplicarFiltros(): void {
+    this.first.set(0);
+    this.cargar();
   }
 
   abrirNueva(): void {

@@ -1,5 +1,6 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
 import {
   NonNullableFormBuilder,
   ReactiveFormsModule,
@@ -11,18 +12,22 @@ import {
   distinctUntilChanged,
   EMPTY,
   map,
+  Subject,
   switchMap,
 } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
+import { IconFieldModule } from 'primeng/iconfield';
+import { InputIconModule } from 'primeng/inputicon';
 import { MessageService } from 'primeng/api';
 import { SelectModule } from 'primeng/select';
-import { TableModule } from 'primeng/table';
+import { TableModule, type TableLazyLoadEvent } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import {
   OPCIONES_SEXO,
+  PAGE_SIZE_DEFAULT,
   SEXO_FEMENINO,
   SEXO_MASCULINO,
   SEXO_NO_ESPECIFICADO,
@@ -33,6 +38,9 @@ import {
 } from '@pane/shared';
 import { SoloDigitosDirective } from '../../shared/solo-digitos.directive';
 import { ClientesService } from './clientes.service';
+
+/** Opción del filtro de estado. */
+type FiltroEstado = 'todos' | 'activos' | 'inactivos';
 
 /** Estado del autocompletado contra el censo (para el aviso bajo la identidad). */
 type CensoEstado = 'idle' | 'buscando' | 'encontrado' | 'no-encontrado';
@@ -47,11 +55,14 @@ type CensoEstado = 'idle' | 'buscando' | 'encontrado' | 'no-encontrado';
   selector: 'app-clientes',
   imports: [
     ReactiveFormsModule,
+    FormsModule,
     SoloDigitosDirective,
     TableModule,
     ButtonModule,
     DialogModule,
     InputTextModule,
+    IconFieldModule,
+    InputIconModule,
     SelectModule,
     TagModule,
     ToastModule,
@@ -59,7 +70,7 @@ type CensoEstado = 'idle' | 'buscando' | 'encontrado' | 'no-encontrado';
   providers: [MessageService],
   templateUrl: './clientes.html',
 })
-export class ClientesPage implements OnInit {
+export class ClientesPage {
   private readonly service = inject(ClientesService);
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly toast = inject(MessageService);
@@ -70,6 +81,19 @@ export class ClientesPage implements OnInit {
   protected readonly clientes = signal<ClienteDto[]>([]);
   protected readonly cargando = signal(false);
   protected readonly guardando = signal(false);
+
+  // --- paginación + filtros (servidor) ---
+  protected readonly total = signal(0);
+  protected readonly first = signal(0);
+  protected readonly rows = signal(PAGE_SIZE_DEFAULT);
+  protected readonly buscar = signal('');
+  protected readonly filtroEstado = signal<FiltroEstado>('todos');
+  protected readonly opcionesEstado: { label: string; value: FiltroEstado }[] = [
+    { label: 'Todos', value: 'todos' },
+    { label: 'Activos', value: 'activos' },
+    { label: 'Inactivos', value: 'inactivos' },
+  ];
+  private readonly buscarInput = new Subject<string>();
 
   // Diálogo crear/editar.
   protected readonly formVisible = signal(false);
@@ -125,24 +149,53 @@ export class ClientesPage implements OnInit {
           this.censoEstado.set('no-encontrado');
         }
       });
+
+    // Búsqueda con debounce: al teclear, recarga desde la primera página.
+    this.buscarInput
+      .pipe(debounceTime(350), distinctUntilChanged(), takeUntilDestroyed())
+      .subscribe(() => this.aplicarFiltros());
   }
 
-  ngOnInit(): void {
+  /** Recarga la página actual desde el servidor con los filtros vigentes. */
+  cargar(): void {
+    const estado = this.filtroEstado();
+    this.cargando.set(true);
+    this.service
+      .listar({
+        page: Math.floor(this.first() / this.rows()) + 1,
+        pageSize: this.rows(),
+        buscar: this.buscar().trim() || undefined,
+        activo: estado === 'todos' ? undefined : estado === 'activos',
+      })
+      .subscribe({
+        next: (res) => {
+          this.clientes.set(res.items);
+          this.total.set(res.total);
+          this.cargando.set(false);
+        },
+        error: () => {
+          this.cargando.set(false);
+          this.error('No se pudo cargar la lista de clientes.');
+        },
+      });
+  }
+
+  /** La tabla (lazy) dispara esto al iniciar y al cambiar de página. */
+  onLazy(e: TableLazyLoadEvent): void {
+    this.first.set(e.first ?? 0);
+    this.rows.set(e.rows ?? PAGE_SIZE_DEFAULT);
     this.cargar();
   }
 
-  cargar(): void {
-    this.cargando.set(true);
-    this.service.listar().subscribe({
-      next: (data) => {
-        this.clientes.set(data);
-        this.cargando.set(false);
-      },
-      error: () => {
-        this.cargando.set(false);
-        this.error('No se pudo cargar la lista de clientes.');
-      },
-    });
+  /** Reinicia a la primera página y recarga (al cambiar un filtro). */
+  aplicarFiltros(): void {
+    this.first.set(0);
+    this.cargar();
+  }
+
+  onBuscar(valor: string): void {
+    this.buscar.set(valor);
+    this.buscarInput.next(valor);
   }
 
   // ---- crear / editar ----

@@ -4,14 +4,17 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { Configuracion } from '@prisma/client';
+import { Prisma, type Configuracion } from '@prisma/client';
 import type {
   FacturaDto,
   FacturaResumenDto,
+  FacturasQuery,
   LineaFacturaInput,
+  Paginado,
   TipoPago,
 } from '@pane/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import { paginado, rangoFechas, resolverPaginacion } from '../common/paginacion';
 import { SucursalesService } from '../sucursales/sucursales.service';
 import { ConfiguracionService } from '../configuracion/configuracion.service';
 import {
@@ -60,13 +63,36 @@ export class FacturasService {
     @Inject(ESTRATEGIA_IMPUESTO) private readonly impuesto: EstrategiaImpuesto,
   ) {}
 
-  /** Lista facturas (resumen, con saldo/estado de pago), recientes primero. */
-  async listar(): Promise<FacturaResumenDto[]> {
-    const facturas = await this.prisma.factura.findMany({
-      orderBy: { id: 'desc' },
-      include: { cliente: true, abonos: { select: { monto: true } } },
-    });
-    return facturas.map(toFacturaResumenDto);
+  /** Lista facturas paginadas (resumen) con filtros: estado, pago, fecha, búsqueda. */
+  async listar(query: FacturasQuery): Promise<Paginado<FacturaResumenDto>> {
+    const { page, pageSize, skip, take } = resolverPaginacion(query);
+    const buscar = query.buscar?.trim();
+    const fecha = rangoFechas(query.desde, query.hasta);
+    const where: Prisma.FacturaWhereInput = {
+      ...(query.estado ? { estado: query.estado } : {}),
+      ...(query.tipoPago ? { tipoPago: query.tipoPago } : {}),
+      ...(fecha ? { fecha } : {}),
+      ...(buscar
+        ? {
+            OR: [
+              { numero: { contains: buscar, mode: 'insensitive' } },
+              { cliente: { nombre: { contains: buscar, mode: 'insensitive' } } },
+              { cliente: { apellido: { contains: buscar, mode: 'insensitive' } } },
+            ],
+          }
+        : {}),
+    };
+    const [facturas, total] = await this.prisma.$transaction([
+      this.prisma.factura.findMany({
+        where,
+        orderBy: { id: 'desc' },
+        skip,
+        take,
+        include: { cliente: true, abonos: { select: { monto: true } } },
+      }),
+      this.prisma.factura.count({ where }),
+    ]);
+    return paginado(facturas.map(toFacturaResumenDto), total, page, pageSize);
   }
 
   /** Obtiene una factura (con detalle, abonos y bitácora) o lanza 404. */

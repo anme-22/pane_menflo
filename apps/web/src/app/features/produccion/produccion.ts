@@ -1,6 +1,7 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
+  FormsModule,
   NonNullableFormBuilder,
   ReactiveFormsModule,
   Validators,
@@ -9,7 +10,7 @@ import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { SelectModule } from 'primeng/select';
-import { TableModule } from 'primeng/table';
+import { TableModule, type TableLazyLoadEvent } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { ToastModule } from 'primeng/toast';
@@ -17,6 +18,7 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import {
   ESTADO_PRODUCCION_LABEL,
+  PAGE_SIZE_DEFAULT,
   type EstadoProduccion,
   type OrdenProduccionDto,
   type OrdenProduccionResumenDto,
@@ -47,6 +49,7 @@ const SEVERIDAD_ESTADO: Record<EstadoProduccion, 'info' | 'success' | 'danger'> 
   selector: 'app-produccion',
   imports: [
     ReactiveFormsModule,
+    FormsModule,
     TableModule,
     ButtonModule,
     DialogModule,
@@ -71,6 +74,20 @@ export class ProduccionPage implements OnInit {
   protected readonly recetas = signal<RecetaResumenDto[]>([]);
   protected readonly cargando = signal(false);
   protected readonly guardando = signal(false);
+
+  // --- paginación + filtros (servidor) ---
+  protected readonly total = signal(0);
+  protected readonly first = signal(0);
+  protected readonly rows = signal(PAGE_SIZE_DEFAULT);
+  protected readonly filtroEstado = signal<EstadoProduccion | null>(null);
+  protected readonly filtroDesde = signal('');
+  protected readonly filtroHasta = signal('');
+  protected readonly opcionesEstadoFiltro = [
+    { label: 'Todos los estados', value: null },
+    { label: ESTADO_PRODUCCION_LABEL.BORRADOR, value: 'BORRADOR' },
+    { label: ESTADO_PRODUCCION_LABEL.CONFIRMADA, value: 'CONFIRMADA' },
+    { label: ESTADO_PRODUCCION_LABEL.ANULADA, value: 'ANULADA' },
+  ];
 
   // --- crear ---
   protected readonly formVisible = signal(false);
@@ -118,25 +135,48 @@ export class ProduccionPage implements OnInit {
   });
 
   ngOnInit(): void {
-    this.cargar();
+    // El listado lo dispara la tabla (lazy) al iniciar; aquí solo las recetas.
     this.recetasService.listar().subscribe({
       next: (r) => this.recetas.set(r),
       error: () => this.error('No se pudieron cargar las recetas.'),
     });
   }
 
+  /** Recarga la página actual desde el servidor con los filtros vigentes. */
   cargar(): void {
     this.cargando.set(true);
-    this.service.listar().subscribe({
-      next: (data) => {
-        this.ordenes.set(data);
-        this.cargando.set(false);
-      },
-      error: () => {
-        this.cargando.set(false);
-        this.error('No se pudieron cargar las órdenes.');
-      },
-    });
+    this.service
+      .listar({
+        page: Math.floor(this.first() / this.rows()) + 1,
+        pageSize: this.rows(),
+        estado: this.filtroEstado() ?? undefined,
+        desde: this.filtroDesde() || undefined,
+        hasta: this.filtroHasta() || undefined,
+      })
+      .subscribe({
+        next: (res) => {
+          this.ordenes.set(res.items);
+          this.total.set(res.total);
+          this.cargando.set(false);
+        },
+        error: () => {
+          this.cargando.set(false);
+          this.error('No se pudieron cargar las órdenes.');
+        },
+      });
+  }
+
+  /** La tabla (lazy) dispara esto al iniciar y al cambiar de página. */
+  onLazy(e: TableLazyLoadEvent): void {
+    this.first.set(e.first ?? 0);
+    this.rows.set(e.rows ?? PAGE_SIZE_DEFAULT);
+    this.cargar();
+  }
+
+  /** Reinicia a la primera página y recarga (al cambiar un filtro). */
+  aplicarFiltros(): void {
+    this.first.set(0);
+    this.cargar();
   }
 
   // ---- crear ----

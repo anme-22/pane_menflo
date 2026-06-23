@@ -131,6 +131,19 @@ export interface LineaFacturaInput {
   tasaImpuesto?: number;
 }
 
+/** Filtros + paginación del listado de facturas. */
+export interface FacturasQuery {
+  page?: number;
+  pageSize?: number;
+  estado?: EstadoFactura;
+  tipoPago?: TipoPago;
+  /** Rango por fecha de la factura (YYYY-MM-DD, inclusivo). */
+  desde?: string;
+  hasta?: string;
+  /** Busca en número de factura y nombre del cliente. */
+  buscar?: string;
+}
+
 /** Crear una factura (BORRADOR). El precio/nombre se snapshotan en el servidor. */
 export interface CrearFacturaRequest {
   clienteIdentidad?: string | null;

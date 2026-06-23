@@ -3,8 +3,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { ClienteDto } from '@pane/shared';
+import { Prisma } from '@prisma/client';
+import type { ClienteDto, ClientesQuery, Paginado } from '@pane/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import { paginado, resolverPaginacion } from '../common/paginacion';
 import { CrearClienteDto } from './dto/crear-cliente.dto';
 import { ActualizarClienteDto } from './dto/actualizar-cliente.dto';
 import { toClienteDto } from './cliente.mapper';
@@ -18,12 +20,27 @@ import { toClienteDto } from './cliente.mapper';
 export class ClientesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Lista todos los clientes (ordenados por creación). */
-  async listar(): Promise<ClienteDto[]> {
-    const clientes = await this.prisma.cliente.findMany({
-      orderBy: { creadoEn: 'asc' },
-    });
-    return clientes.map(toClienteDto);
+  /** Lista clientes paginados, con búsqueda (nombre/apellido/identidad) y estado. */
+  async listar(query: ClientesQuery): Promise<Paginado<ClienteDto>> {
+    const { page, pageSize, skip, take } = resolverPaginacion(query);
+    const buscar = query.buscar?.trim();
+    const where: Prisma.ClienteWhereInput = {
+      ...(query.activo !== undefined ? { activo: query.activo } : {}),
+      ...(buscar
+        ? {
+            OR: [
+              { nombre: { contains: buscar, mode: 'insensitive' } },
+              { apellido: { contains: buscar, mode: 'insensitive' } },
+              { identidad: { contains: buscar } },
+            ],
+          }
+        : {}),
+    };
+    const [clientes, total] = await this.prisma.$transaction([
+      this.prisma.cliente.findMany({ where, orderBy: { creadoEn: 'asc' }, skip, take }),
+      this.prisma.cliente.count({ where }),
+    ]);
+    return paginado(clientes.map(toClienteDto), total, page, pageSize);
   }
 
   /** Obtiene un cliente por identidad o lanza 404. */

@@ -9,6 +9,29 @@
     <p-button label="Nuevo cliente" icon="pi pi-plus" (onClick)="abrirNuevo()" />
   </div>
 
+  <!-- Filtros -->
+  <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+    <p-iconfield iconPosition="left" class="w-full sm:max-w-xs">
+      <p-inputicon styleClass="pi pi-search" />
+      <input
+        pInputText
+        type="text"
+        [ngModel]="buscar()"
+        (ngModelChange)="onBuscar($event)"
+        placeholder="Buscar por nombre o identidad"
+        class="w-full"
+      />
+    </p-iconfield>
+    <p-select
+      [ngModel]="filtroEstado()"
+      (ngModelChange)="filtroEstado.set($event); aplicarFiltros()"
+      [options]="opcionesEstado"
+      optionLabel="label"
+      optionValue="value"
+      styleClass="w-full sm:w-44"
+    />
+  </div>
+
   <div
     class="overflow-hidden rounded-xl border"
     style="background-color: var(--surface-card); border-color: var(--surface-border)"
@@ -16,8 +39,15 @@
     <p-table
       [value]="clientes()"
       [loading]="cargando()"
-      [paginator]="clientes().length > 10"
-      [rows]="10"
+      [lazy]="true"
+      (onLazyLoad)="onLazy($event)"
+      [paginator]="true"
+      [rows]="rows()"
+      [first]="first()"
+      [totalRecords]="total()"
+      [rowsPerPageOptions]="[10, 25, 50]"
+      [showCurrentPageReport]="true"
+      currentPageReportTemplate="{first}–{last} de {totalRecords}"
       responsiveLayout="stack"
       [breakpoint]="'640px'"
     >

@@ -3,12 +3,15 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { EstadoProduccion, TipoMovimiento } from '@prisma/client';
+import { EstadoProduccion, Prisma, TipoMovimiento } from '@prisma/client';
 import type {
   OrdenProduccionDto,
   OrdenProduccionResumenDto,
+  Paginado,
+  ProduccionQuery,
 } from '@pane/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import { paginado, rangoFechas, resolverPaginacion } from '../common/paginacion';
 import { ConversionService } from '../unidades/conversion.service';
 import { SucursalesService } from '../sucursales/sucursales.service';
 import { InventarioService } from '../inventario/inventario.service';
@@ -52,12 +55,24 @@ export class ProduccionService {
   ) {}
 
   /** Lista las órdenes (resumen), más recientes primero. */
-  async listar(): Promise<OrdenProduccionResumenDto[]> {
-    const ordenes = await this.prisma.ordenProduccion.findMany({
-      orderBy: { id: 'desc' },
-      include: { producto: true, receta: true },
-    });
-    return ordenes.map(toOrdenProduccionResumenDto);
+  async listar(query: ProduccionQuery): Promise<Paginado<OrdenProduccionResumenDto>> {
+    const { page, pageSize, skip, take } = resolverPaginacion(query);
+    const fecha = rangoFechas(query.desde, query.hasta);
+    const where: Prisma.OrdenProduccionWhereInput = {
+      ...(query.estado ? { estado: query.estado } : {}),
+      ...(fecha ? { fecha } : {}),
+    };
+    const [ordenes, total] = await this.prisma.$transaction([
+      this.prisma.ordenProduccion.findMany({
+        where,
+        orderBy: { id: 'desc' },
+        skip,
+        take,
+        include: { producto: true, receta: true },
+      }),
+      this.prisma.ordenProduccion.count({ where }),
+    ]);
+    return paginado(ordenes.map(toOrdenProduccionResumenDto), total, page, pageSize);
   }
 
   /** Obtiene una orden por id (con sus consumos) o lanza 404. */

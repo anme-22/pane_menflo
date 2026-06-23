@@ -5,12 +5,14 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
-import type { CensoLookupResponse, ClienteDto } from '@pane/shared';
+import type { CensoLookupResponse, ClienteDto, Paginado } from '@pane/shared';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CambiarEstadoDto } from '../usuarios/dto/cambiar-estado.dto';
 import { ActualizarClienteDto } from './dto/actualizar-cliente.dto';
+import { ClientesQueryDto } from './dto/clientes-query.dto';
 import { CrearClienteDto } from './dto/crear-cliente.dto';
 import { CensoService } from './censo.service';
 import { ClientesService } from './clientes.service';
@@ -29,8 +31,8 @@ export class ClientesController {
   ) {}
 
   @Get()
-  listar(): Promise<ClienteDto[]> {
-    return this.clientes.listar();
+  listar(@Query() query: ClientesQueryDto): Promise<Paginado<ClienteDto>> {
+    return this.clientes.listar(query);
   }
 
   /**

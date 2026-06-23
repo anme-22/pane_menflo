@@ -62,6 +62,16 @@ export interface OrdenProduccionDto {
   consumos: ConsumoOrdenDto[];
 }
 
+/** Filtros + paginación del listado de órdenes de producción. */
+export interface ProduccionQuery {
+  page?: number;
+  pageSize?: number;
+  estado?: EstadoProduccion;
+  /** Rango por fecha de la orden (YYYY-MM-DD, inclusivo). */
+  desde?: string;
+  hasta?: string;
+}
+
 /** Resumen para el listado (sin el detalle de consumos). */
 export interface OrdenProduccionResumenDto {
   id: number;

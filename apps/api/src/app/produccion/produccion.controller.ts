@@ -6,17 +6,20 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import type {
   OrdenProduccionDto,
   OrdenProduccionResumenDto,
+  Paginado,
 } from '@pane/shared';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { ProduccionService } from './produccion.service';
 import { CrearOrdenDto } from './dto/crear-orden.dto';
+import { ProduccionQueryDto } from './dto/produccion-query.dto';
 import { CapturarBolsasRealesDto } from './dto/capturar-bolsas-reales.dto';
 import { AnularOrdenDto } from './dto/anular-orden.dto';
 
@@ -31,8 +34,10 @@ export class ProduccionController {
   constructor(private readonly produccionService: ProduccionService) {}
 
   @Get()
-  listar(): Promise<OrdenProduccionResumenDto[]> {
-    return this.produccionService.listar();
+  listar(
+    @Query() query: ProduccionQueryDto,
+  ): Promise<Paginado<OrdenProduccionResumenDto>> {
+    return this.produccionService.listar(query);
   }
 
   @Get(':id')

@@ -1,7 +1,9 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 import {
   FormArray,
+  FormsModule,
   NonNullableFormBuilder,
   ReactiveFormsModule,
   Validators,
@@ -9,8 +11,11 @@ import {
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
+import { InputTextModule } from 'primeng/inputtext';
+import { IconFieldModule } from 'primeng/iconfield';
+import { InputIconModule } from 'primeng/inputicon';
 import { SelectModule } from 'primeng/select';
-import { TableModule } from 'primeng/table';
+import { TableModule, type TableLazyLoadEvent } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
@@ -20,6 +25,7 @@ import {
   ESTADO_PAGO_LABEL,
   METODOS_ABONO,
   METODOS_PAGO,
+  PAGE_SIZE_DEFAULT,
   TIPO_PAGO_LABEL,
   type ClienteDto,
   type ConfiguracionDto,
@@ -29,6 +35,7 @@ import {
   type FacturaResumenDto,
   type LineaFacturaInput,
   type ProductoDto,
+  type TipoPago,
 } from '@pane/shared';
 import { ProductosService } from '../productos/productos.service';
 import { ClientesService } from '../clientes/clientes.service';
@@ -58,10 +65,14 @@ const SEV_PAGO: Record<EstadoPago, 'danger' | 'warn' | 'success'> = {
   selector: 'app-facturas',
   imports: [
     ReactiveFormsModule,
+    FormsModule,
     TableModule,
     ButtonModule,
     DialogModule,
     InputNumberModule,
+    InputTextModule,
+    IconFieldModule,
+    InputIconModule,
     SelectModule,
     TagModule,
     ToastModule,
@@ -91,6 +102,28 @@ export class FacturasPage implements OnInit {
   ];
   protected readonly metodosAbono = METODOS_ABONO.map((m) => ({ label: m, value: m }));
   protected readonly metodosPago = METODOS_PAGO.map((m) => ({ label: m, value: m }));
+
+  // --- paginación + filtros (servidor) ---
+  protected readonly total = signal(0);
+  protected readonly first = signal(0);
+  protected readonly rows = signal(PAGE_SIZE_DEFAULT);
+  protected readonly buscar = signal('');
+  protected readonly filtroEstado = signal<EstadoFactura | null>(null);
+  protected readonly filtroTipoPago = signal<TipoPago | null>(null);
+  protected readonly filtroDesde = signal('');
+  protected readonly filtroHasta = signal('');
+  protected readonly opcionesEstadoFiltro = [
+    { label: 'Todos los estados', value: null },
+    { label: ESTADO_FACTURA_LABEL.BORRADOR, value: 'BORRADOR' },
+    { label: ESTADO_FACTURA_LABEL.EMITIDA, value: 'EMITIDA' },
+    { label: ESTADO_FACTURA_LABEL.ANULADA, value: 'ANULADA' },
+  ];
+  protected readonly opcionesPagoFiltro = [
+    { label: 'Contado y crédito', value: null },
+    { label: TIPO_PAGO_LABEL.CONTADO, value: 'CONTADO' },
+    { label: TIPO_PAGO_LABEL.CREDITO, value: 'CREDITO' },
+  ];
+  private readonly buscarInput = new Subject<string>();
 
   // --- editor borrador / editar ---
   protected readonly formVisible = signal(false);
@@ -157,14 +190,23 @@ export class FacturasPage implements OnInit {
     return { subtotal, impuesto, total: subtotal + impuesto };
   });
 
+  constructor() {
+    // Búsqueda con debounce: al teclear, recarga desde la primera página.
+    this.buscarInput
+      .pipe(debounceTime(350), distinctUntilChanged(), takeUntilDestroyed())
+      .subscribe(() => this.aplicarFiltros());
+  }
+
   ngOnInit(): void {
-    this.cargar();
+    // El listado lo dispara la tabla (lazy) al iniciar; aquí solo las opciones.
     this.productosService.listar().subscribe({
       next: (p) => this.productos.set(p),
       error: () => this.error('No se pudieron cargar los productos.'),
     });
-    this.clientesService.listar().subscribe({
-      next: (c) => this.clientes.set(c),
+    // Clientes para el desplegable del editor: activos (hasta 100; el bakery
+    // tiene pocos clientes registrados —el resto son consumidor final—).
+    this.clientesService.listar({ pageSize: 100, activo: true }).subscribe({
+      next: (res) => this.clientes.set(res.items),
       error: () => this.error('No se pudieron cargar los clientes.'),
     });
     this.service.configuracion().subscribe({
@@ -173,18 +215,48 @@ export class FacturasPage implements OnInit {
     });
   }
 
+  /** Recarga la página actual desde el servidor con los filtros vigentes. */
   cargar(): void {
     this.cargando.set(true);
-    this.service.listar().subscribe({
-      next: (data) => {
-        this.facturas.set(data);
-        this.cargando.set(false);
-      },
-      error: () => {
-        this.cargando.set(false);
-        this.error('No se pudieron cargar las facturas.');
-      },
-    });
+    this.service
+      .listar({
+        page: Math.floor(this.first() / this.rows()) + 1,
+        pageSize: this.rows(),
+        estado: this.filtroEstado() ?? undefined,
+        tipoPago: this.filtroTipoPago() ?? undefined,
+        desde: this.filtroDesde() || undefined,
+        hasta: this.filtroHasta() || undefined,
+        buscar: this.buscar().trim() || undefined,
+      })
+      .subscribe({
+        next: (res) => {
+          this.facturas.set(res.items);
+          this.total.set(res.total);
+          this.cargando.set(false);
+        },
+        error: () => {
+          this.cargando.set(false);
+          this.error('No se pudieron cargar las facturas.');
+        },
+      });
+  }
+
+  /** La tabla (lazy) dispara esto al iniciar y al cambiar de página. */
+  onLazy(e: TableLazyLoadEvent): void {
+    this.first.set(e.first ?? 0);
+    this.rows.set(e.rows ?? PAGE_SIZE_DEFAULT);
+    this.cargar();
+  }
+
+  /** Reinicia a la primera página y recarga (al cambiar un filtro). */
+  aplicarFiltros(): void {
+    this.first.set(0);
+    this.cargar();
+  }
+
+  onBuscar(valor: string): void {
+    this.buscar.set(valor);
+    this.buscarInput.next(valor);
   }
 
   // ---- FormArray de líneas ----
