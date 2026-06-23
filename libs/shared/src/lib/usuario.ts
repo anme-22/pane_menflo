@@ -21,15 +21,17 @@ export interface UsuarioDto {
   id: number;
   nombre: string;
   email: string;
+  /** Identificador alternativo de login (cédula, 13 dígitos) o null. */
+  identidad: string | null;
   rol: RolUsuario;
   activo: boolean;
   creadoEn: string;
   actualizadoEn: string;
 }
 
-/** Cuerpo de la petición de login. */
+/** Cuerpo de la petición de login. `identificador` es el correo O la identidad. */
 export interface LoginRequest {
-  email: string;
+  identificador: string;
   password: string;
 }
 
@@ -43,6 +45,8 @@ export interface LoginResponse {
 export interface CrearUsuarioRequest {
   nombre: string;
   email: string;
+  /** Identidad opcional (13 dígitos); habilita el login por identidad. */
+  identidad?: string | null;
   password: string;
   rol: RolUsuario;
 }
@@ -54,8 +58,16 @@ export interface CrearUsuarioRequest {
 export interface ActualizarUsuarioRequest {
   nombre?: string;
   email?: string;
+  /** Identidad (13 dígitos) o null para quitarla. */
+  identidad?: string | null;
   password?: string;
   rol?: RolUsuario;
+}
+
+/** Respuesta del reset de contraseña: la temporal generada (se muestra una vez). */
+export interface RestablecerPasswordResponse {
+  /** Contraseña temporal en claro. Solo se devuelve aquí, no se guarda en claro. */
+  password: string;
 }
 
 /** Contenido (claims) del JWT de acceso. */

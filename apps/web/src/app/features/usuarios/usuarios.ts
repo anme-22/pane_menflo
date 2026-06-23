@@ -68,9 +68,18 @@ export class UsuariosPage implements OnInit {
   protected readonly form = this.fb.group({
     nombre: ['', [Validators.required, Validators.minLength(2)]],
     email: ['', [Validators.required, Validators.email]],
+    // Identidad opcional; si se escribe, deben ser 13 dígitos (pattern admite vacío).
+    identidad: ['', [Validators.pattern(/^\d{13}$/)]],
     password: ['', [Validators.required, Validators.minLength(8)]],
     rol: ['vendedor' as UsuarioDto['rol'], [Validators.required]],
   });
+
+  // --- restablecer contraseña ---
+  protected readonly resetVisible = signal(false);
+  protected readonly reseteando = signal(false);
+  protected readonly resetUsuario = signal<UsuarioDto | null>(null);
+  /** Contraseña temporal generada (se muestra una sola vez). */
+  protected readonly resetPassword = signal<string | null>(null);
 
   ngOnInit(): void {
     this.cargar();
@@ -92,14 +101,20 @@ export class UsuariosPage implements OnInit {
 
   abrirNuevo(): void {
     this.editandoId.set(null);
-    this.form.reset({ nombre: '', email: '', password: '', rol: 'vendedor' });
+    this.form.reset({ nombre: '', email: '', identidad: '', password: '', rol: 'vendedor' });
     this.ajustarValidadorPassword(true);
     this.dialogVisible.set(true);
   }
 
   abrirEdicion(u: UsuarioDto): void {
     this.editandoId.set(u.id);
-    this.form.reset({ nombre: u.nombre, email: u.email, password: '', rol: u.rol });
+    this.form.reset({
+      nombre: u.nombre,
+      email: u.email,
+      identidad: u.identidad ?? '',
+      password: '',
+      rol: u.rol,
+    });
     // Al editar, la contraseña es opcional (solo se cambia si se escribe).
     this.ajustarValidadorPassword(false);
     this.dialogVisible.set(true);
@@ -114,8 +129,17 @@ export class UsuariosPage implements OnInit {
     const id = this.editandoId();
     const valor = this.form.getRawValue();
 
+    // Identidad: vacío → null (no enviar cadena vacía).
+    const identidad = valor.identidad.trim() || null;
+
     if (id === null) {
-      const data: CrearUsuarioRequest = valor;
+      const data: CrearUsuarioRequest = {
+        nombre: valor.nombre,
+        email: valor.email,
+        identidad,
+        password: valor.password,
+        rol: valor.rol,
+      };
       this.service.crear(data).subscribe({
         next: () => this.alGuardar('Usuario creado.'),
         error: (e) => this.alFallarGuardado(e),
@@ -125,6 +149,7 @@ export class UsuariosPage implements OnInit {
       const data: ActualizarUsuarioRequest = {
         nombre: valor.nombre,
         email: valor.email,
+        identidad,
         rol: valor.rol,
         ...(valor.password ? { password: valor.password } : {}),
       };
@@ -148,6 +173,37 @@ export class UsuariosPage implements OnInit {
       error: (e) =>
         this.error(e?.error?.message ?? 'No se pudo cambiar el estado.'),
     });
+  }
+
+  /** Restablece la contraseña: pide una temporal y la muestra una sola vez. */
+  abrirReset(u: UsuarioDto): void {
+    this.resetUsuario.set(u);
+    this.resetPassword.set(null);
+    this.reseteando.set(true);
+    this.resetVisible.set(true);
+    this.service.restablecerPassword(u.id).subscribe({
+      next: (res) => {
+        this.reseteando.set(false);
+        this.resetPassword.set(res.password);
+      },
+      error: (e) => {
+        this.reseteando.set(false);
+        this.resetVisible.set(false);
+        this.error(e?.error?.message ?? 'No se pudo restablecer la contraseña.');
+      },
+    });
+  }
+
+  /** Copia la contraseña temporal al portapapeles. */
+  copiarPassword(): void {
+    const pass = this.resetPassword();
+    if (!pass) {
+      return;
+    }
+    void navigator.clipboard?.writeText(pass).then(
+      () => this.toast.add({ severity: 'success', summary: 'Copiada', life: 1500 }),
+      () => undefined,
+    );
   }
 
   private alGuardar(mensaje: string): void {
