@@ -26,6 +26,16 @@ export const OPCIONES_SEXO: readonly { label: string; value: number }[] = [
   { label: 'No especificado', value: SEXO_NO_ESPECIFICADO },
 ];
 
+/** Filtros + paginación del listado de clientes. */
+export interface ClientesQuery {
+  page?: number;
+  pageSize?: number;
+  /** Busca en nombre, apellido e identidad. */
+  buscar?: string;
+  /** Filtra por estado; si se omite, trae activos e inactivos. */
+  activo?: boolean;
+}
+
 /** Cliente tal como lo expone la API. */
 export interface ClienteDto {
   identidad: string;

@@ -21,6 +21,24 @@ describe('ClientesService', () => {
 
   afterEach(() => http.verify());
 
+  it('listar sin filtros hace GET a /clientes', () => {
+    service.listar().subscribe();
+    const req = http.expectOne('/api/clientes');
+    expect(req.request.method).toBe('GET');
+    req.flush({ items: [], total: 0, page: 1, pageSize: 10 });
+  });
+
+  it('listar pasa page/pageSize/buscar/activo como query params', () => {
+    service.listar({ page: 2, pageSize: 25, buscar: 'ana', activo: true }).subscribe();
+    const req = http.expectOne(
+      (r) => r.url === '/api/clientes' && r.params.get('buscar') === 'ana',
+    );
+    expect(req.request.params.get('page')).toBe('2');
+    expect(req.request.params.get('pageSize')).toBe('25');
+    expect(req.request.params.get('activo')).toBe('true');
+    req.flush({ items: [], total: 0, page: 2, pageSize: 25 });
+  });
+
   it('lookupCenso hace GET a /clientes/censo/:identidad', () => {
     const respuesta: CensoLookupResponse = {
       encontrado: true,

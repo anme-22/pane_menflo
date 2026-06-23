@@ -3,8 +3,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { CompraDto } from '@pane/shared';
+import { Prisma } from '@prisma/client';
+import type { CompraDto, ComprasQuery, Paginado } from '@pane/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import { paginado, rangoFechas, resolverPaginacion } from '../common/paginacion';
 import { ConversionService } from '../unidades/conversion.service';
 import { SucursalesService } from '../sucursales/sucursales.service';
 import { InventarioService } from '../inventario/inventario.service';
@@ -30,16 +32,25 @@ export class ComprasService {
   ) {}
 
   /** Lista compras (filtrables por insumo y/o proveedor), más recientes primero. */
-  async listar(insumoId?: number, proveedorId?: number): Promise<CompraDto[]> {
-    const compras = await this.prisma.compra.findMany({
-      where: {
-        ...(insumoId ? { insumoId } : {}),
-        ...(proveedorId ? { proveedorId } : {}),
-      },
-      orderBy: { fecha: 'desc' },
-      include: { insumo: true, unidadCompra: true, proveedor: true },
-    });
-    return compras.map(toCompraDto);
+  async listar(query: ComprasQuery): Promise<Paginado<CompraDto>> {
+    const { page, pageSize, skip, take } = resolverPaginacion(query);
+    const fecha = rangoFechas(query.desde, query.hasta);
+    const where: Prisma.CompraWhereInput = {
+      ...(query.insumoId ? { insumoId: query.insumoId } : {}),
+      ...(query.proveedorId ? { proveedorId: query.proveedorId } : {}),
+      ...(fecha ? { fecha } : {}),
+    };
+    const [compras, total] = await this.prisma.$transaction([
+      this.prisma.compra.findMany({
+        where,
+        orderBy: { fecha: 'desc' },
+        skip,
+        take,
+        include: { insumo: true, unidadCompra: true, proveedor: true },
+      }),
+      this.prisma.compra.count({ where }),
+    ]);
+    return paginado(compras.map(toCompraDto), total, page, pageSize);
   }
 
   /** Registra una compra y actualiza la existencia (costo promedio ponderado). */

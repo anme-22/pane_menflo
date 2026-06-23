@@ -6,14 +6,16 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import type { Usuario } from '@prisma/client';
-import type { FacturaDto, FacturaResumenDto } from '@pane/shared';
+import type { FacturaDto, FacturaResumenDto, Paginado } from '@pane/shared';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { FacturasService } from './facturas.service';
 import { CrearFacturaDto } from './dto/crear-factura.dto';
+import { FacturasQueryDto } from './dto/facturas-query.dto';
 import { ActualizarFacturaDto } from './dto/actualizar-factura.dto';
 import { AnularFacturaDto } from './dto/anular-factura.dto';
 import { RegistrarAbonoDto } from './dto/registrar-abono.dto';
@@ -29,8 +31,8 @@ export class FacturasController {
   constructor(private readonly facturasService: FacturasService) {}
 
   @Get()
-  listar(): Promise<FacturaResumenDto[]> {
-    return this.facturasService.listar();
+  listar(@Query() query: FacturasQueryDto): Promise<Paginado<FacturaResumenDto>> {
+    return this.facturasService.listar(query);
   }
 
   @Get(':id')

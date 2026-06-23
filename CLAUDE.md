@@ -798,5 +798,33 @@ ocultamiento de UI por rol en Angular.
       campo identidad, botón de reset; sin tocar la clave del admin]; usuarios de prueba
       borrados. tests api[57, cubierto por e2e] + web[+2: usuarios service reset/identidad
       + login body identificador — 43 total] verdes.)
+- [x] Mejora — Paginación + filtros (en servidor)
+      (Los listados que crecen ya no traen TODO: la API pagina y filtra en SQL, las
+      tablas de PrimeNG van en modo LAZY. Sin migración. DECISIÓN con el usuario:
+      paginación en SERVIDOR + set completo de filtros. libs/shared: `paginacion.ts`
+      con `QueryPaginado` {page,pageSize}, `Paginado<T>` {items,total,page,pageSize} y
+      PAGE_SIZE_DEFAULT=10/MAX=100; + query types por pantalla (FacturasQuery,
+      ClientesQuery, ProduccionQuery, ComprasQuery). API: helpers `common/paginacion.ts`
+      [resolverPaginacion → skip/take acotado; rangoFechas(desde,hasta) inclusivo, IGNORA
+      fechas imposibles bien formadas para no reventar; paginado()] y DTO base
+      `common/query-paginado.dto.ts` [@Type/@IsInt; separado de los helpers para no
+      arrastrar reflect-metadata a sus tests]. Cada listar(query) usa
+      $transaction([findMany skip/take, count]) con un where filtrado. Filtros: facturas
+      [estado, tipoPago, rango fecha, buscar=número/cliente]; clientes [buscar=nombre/
+      apellido/identidad, activo]; producción [estado, rango fecha]; compras [insumoId,
+      proveedorId, rango fecha]. Las fechas se validan por formato (@Matches YYYY-MM-DD →
+      400 si mal escrito). Web: servicios listar(query) arman HttpParams y devuelven
+      Paginado; tablas `[lazy] (onLazyLoad) [paginator] [rows] [first] [totalRecords]
+      [rowsPerPageOptions]=[10,25,50]` + barra de filtros (búsqueda con debounce 350ms
+      vía Subject, selects de estado/tipo, inputs date, selects insumo/proveedor con
+      showClear). NOTA: el desplegable de cliente en el editor de factura carga activos
+      con pageSize 100 [el negocio tiene pocos clientes registrados; el resto es
+      consumidor final]. Verificado contra BD [e2e 17/17: forma Paginado en las 4
+      pantallas, pageSize respeta el límite y total cuenta todo, buscar/activo en
+      clientes (3/1/2), estado=EMITIDA solo trae EMITIDA, fecha mal escrita 400 /
+      imposible no revienta 200, filtro insumoId en compras] y UI [buscadores +
+      paginador en clientes y facturas]; datos de prueba limpiados. tests api[+7:
+      helpers de paginación — 64 total] + web[+2: clientes service params — 45 total]
+      verdes.)
 - [ ] Feature 11 — Deploy
 - [ ] Feature 12 — Configuración

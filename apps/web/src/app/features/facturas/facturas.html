@@ -10,6 +10,55 @@
     <p-button label="Nueva factura" icon="pi pi-plus" (onClick)="abrirNueva()" />
   </div>
 
+  <!-- Filtros -->
+  <div class="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
+    <p-iconfield iconPosition="left" class="lg:col-span-2">
+      <p-inputicon styleClass="pi pi-search" />
+      <input
+        pInputText
+        type="text"
+        [ngModel]="buscar()"
+        (ngModelChange)="onBuscar($event)"
+        placeholder="Buscar por número o cliente"
+        class="w-full"
+      />
+    </p-iconfield>
+    <p-select
+      [ngModel]="filtroEstado()"
+      (ngModelChange)="filtroEstado.set($event); aplicarFiltros()"
+      [options]="opcionesEstadoFiltro"
+      optionLabel="label"
+      optionValue="value"
+      styleClass="w-full"
+    />
+    <p-select
+      [ngModel]="filtroTipoPago()"
+      (ngModelChange)="filtroTipoPago.set($event); aplicarFiltros()"
+      [options]="opcionesPagoFiltro"
+      optionLabel="label"
+      optionValue="value"
+      styleClass="w-full"
+    />
+    <div class="flex items-center gap-2">
+      <input
+        type="date"
+        [ngModel]="filtroDesde()"
+        (ngModelChange)="filtroDesde.set($event); aplicarFiltros()"
+        class="w-full rounded-md border bg-transparent px-2 py-2 text-sm"
+        style="border-color: var(--surface-border); color: var(--text-color)"
+        aria-label="Desde"
+      />
+      <input
+        type="date"
+        [ngModel]="filtroHasta()"
+        (ngModelChange)="filtroHasta.set($event); aplicarFiltros()"
+        class="w-full rounded-md border bg-transparent px-2 py-2 text-sm"
+        style="border-color: var(--surface-border); color: var(--text-color)"
+        aria-label="Hasta"
+      />
+    </div>
+  </div>
+
   <div
     class="overflow-hidden rounded-xl border"
     style="background-color: var(--surface-card); border-color: var(--surface-border)"
@@ -17,8 +66,15 @@
     <p-table
       [value]="facturas()"
       [loading]="cargando()"
-      [paginator]="facturas().length > 12"
-      [rows]="12"
+      [lazy]="true"
+      (onLazyLoad)="onLazy($event)"
+      [paginator]="true"
+      [rows]="rows()"
+      [first]="first()"
+      [totalRecords]="total()"
+      [rowsPerPageOptions]="[10, 25, 50]"
+      [showCurrentPageReport]="true"
+      currentPageReportTemplate="{first}–{last} de {totalRecords}"
       responsiveLayout="stack"
       [breakpoint]="'640px'"
     >

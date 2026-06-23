@@ -6,11 +6,12 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import type { CompraDto } from '@pane/shared';
+import type { CompraDto, Paginado } from '@pane/shared';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { CrearCompraDto } from './dto/crear-compra.dto';
+import { ComprasQueryDto } from './dto/compras-query.dto';
 import { ComprasService } from './compras.service';
 
 /**
@@ -24,14 +25,8 @@ export class ComprasController {
   constructor(private readonly comprasService: ComprasService) {}
 
   @Get()
-  listar(
-    @Query('insumoId') insumoId?: string,
-    @Query('proveedorId') proveedorId?: string,
-  ): Promise<CompraDto[]> {
-    return this.comprasService.listar(
-      insumoId ? Number(insumoId) : undefined,
-      proveedorId ? Number(proveedorId) : undefined,
-    );
+  listar(@Query() query: ComprasQueryDto): Promise<Paginado<CompraDto>> {
+    return this.comprasService.listar(query);
   }
 
   @Post()

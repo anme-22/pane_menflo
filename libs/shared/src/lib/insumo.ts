@@ -81,6 +81,17 @@ export interface CompraDto {
   proveedorNombre: string | null;
 }
 
+/** Filtros + paginación del listado de compras. */
+export interface ComprasQuery {
+  page?: number;
+  pageSize?: number;
+  insumoId?: number;
+  proveedorId?: number;
+  /** Rango por fecha de la compra (YYYY-MM-DD, inclusivo). */
+  desde?: string;
+  hasta?: string;
+}
+
 /** Registrar una compra. `costo` es el TOTAL de la compra. */
 export interface CrearCompraRequest {
   insumoId: number;

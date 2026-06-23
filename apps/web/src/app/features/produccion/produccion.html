@@ -10,6 +10,36 @@
     <p-button label="Nueva orden" icon="pi pi-plus" (onClick)="abrirNueva()" />
   </div>
 
+  <!-- Filtros -->
+  <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+    <p-select
+      [ngModel]="filtroEstado()"
+      (ngModelChange)="filtroEstado.set($event); aplicarFiltros()"
+      [options]="opcionesEstadoFiltro"
+      optionLabel="label"
+      optionValue="value"
+      styleClass="w-full sm:w-52"
+    />
+    <div class="flex items-center gap-2">
+      <input
+        type="date"
+        [ngModel]="filtroDesde()"
+        (ngModelChange)="filtroDesde.set($event); aplicarFiltros()"
+        class="w-full rounded-md border bg-transparent px-2 py-2 text-sm"
+        style="border-color: var(--surface-border); color: var(--text-color)"
+        aria-label="Desde"
+      />
+      <input
+        type="date"
+        [ngModel]="filtroHasta()"
+        (ngModelChange)="filtroHasta.set($event); aplicarFiltros()"
+        class="w-full rounded-md border bg-transparent px-2 py-2 text-sm"
+        style="border-color: var(--surface-border); color: var(--text-color)"
+        aria-label="Hasta"
+      />
+    </div>
+  </div>
+
   <div
     class="overflow-hidden rounded-xl border"
     style="background-color: var(--surface-card); border-color: var(--surface-border)"
@@ -17,8 +47,15 @@
     <p-table
       [value]="ordenes()"
       [loading]="cargando()"
-      [paginator]="ordenes().length > 10"
-      [rows]="10"
+      [lazy]="true"
+      (onLazyLoad)="onLazy($event)"
+      [paginator]="true"
+      [rows]="rows()"
+      [first]="first()"
+      [totalRecords]="total()"
+      [rowsPerPageOptions]="[10, 25, 50]"
+      [showCurrentPageReport]="true"
+      currentPageReportTemplate="{first}–{last} de {totalRecords}"
       responsiveLayout="stack"
       [breakpoint]="'640px'"
     >

@@ -1,11 +1,13 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import type {
   ActualizarClienteRequest,
   CensoLookupResponse,
   ClienteDto,
+  ClientesQuery,
   CrearClienteRequest,
+  Paginado,
 } from '@pane/shared';
 import { API_BASE } from '../../core/api';
 
@@ -15,8 +17,14 @@ export class ClientesService {
   private readonly http = inject(HttpClient);
   private readonly url = `${API_BASE}/clientes`;
 
-  listar(): Observable<ClienteDto[]> {
-    return this.http.get<ClienteDto[]>(this.url);
+  /** Lista paginada con filtros (búsqueda, estado). */
+  listar(query: ClientesQuery = {}): Observable<Paginado<ClienteDto>> {
+    let params = new HttpParams();
+    if (query.page) params = params.set('page', query.page);
+    if (query.pageSize) params = params.set('pageSize', query.pageSize);
+    if (query.buscar) params = params.set('buscar', query.buscar);
+    if (query.activo !== undefined) params = params.set('activo', query.activo);
+    return this.http.get<Paginado<ClienteDto>>(this.url, { params });
   }
 
   crear(data: CrearClienteRequest): Observable<ClienteDto> {

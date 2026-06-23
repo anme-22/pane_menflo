@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import type {
@@ -7,6 +7,8 @@ import type {
   CrearOrdenProduccionRequest,
   OrdenProduccionDto,
   OrdenProduccionResumenDto,
+  Paginado,
+  ProduccionQuery,
 } from '@pane/shared';
 import { API_BASE } from '../../core/api';
 
@@ -16,8 +18,15 @@ export class ProduccionService {
   private readonly http = inject(HttpClient);
   private readonly url = `${API_BASE}/produccion`;
 
-  listar(): Observable<OrdenProduccionResumenDto[]> {
-    return this.http.get<OrdenProduccionResumenDto[]>(this.url);
+  /** Lista paginada con filtros (estado, fechas). */
+  listar(query: ProduccionQuery = {}): Observable<Paginado<OrdenProduccionResumenDto>> {
+    let params = new HttpParams();
+    if (query.page) params = params.set('page', query.page);
+    if (query.pageSize) params = params.set('pageSize', query.pageSize);
+    if (query.estado) params = params.set('estado', query.estado);
+    if (query.desde) params = params.set('desde', query.desde);
+    if (query.hasta) params = params.set('hasta', query.hasta);
+    return this.http.get<Paginado<OrdenProduccionResumenDto>>(this.url, { params });
   }
 
   obtener(id: number): Observable<OrdenProduccionDto> {
