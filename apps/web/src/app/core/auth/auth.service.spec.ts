@@ -39,6 +39,7 @@ describe('AuthService', () => {
         id: 1,
         nombre: 'Super',
         email: 'a@a.com',
+        identidad: null,
         rol: 'super_admin',
         activo: true,
         creadoEn: '2026-01-01T00:00:00.000Z',
@@ -49,6 +50,7 @@ describe('AuthService', () => {
     service.login('a@a.com', 'secreta').subscribe();
     const req = http.expectOne('/api/auth/login');
     expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ identificador: 'a@a.com', password: 'secreta' });
     req.flush(respuesta);
 
     expect(service.token()).toBe('tok-123');

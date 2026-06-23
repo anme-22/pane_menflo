@@ -50,6 +50,7 @@ Para la autenticación (Feature 2) define además:
 | `SUPERADMIN_EMAIL`   | Email del super_admin inicial que crea el seed.            |
 | `SUPERADMIN_PASSWORD`| Contraseña del super_admin inicial.                        |
 | `SUPERADMIN_NOMBRE`  | (Opcional) Nombre del super_admin inicial.                 |
+| `SUPERADMIN_IDENTIDAD`| (Opcional) Identidad (13 dígitos) del super_admin, para entrar también con ella. |
 
 ### 3. Levantar PostgreSQL
 
@@ -96,10 +97,12 @@ pnpm nx serve web
 ## Autenticación (Feature 2)
 
 - Inicia sesión en `http://localhost:4200/login` con el super_admin sembrado
-  (`SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` del `.env`).
+  (`SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` del `.env`). El login acepta
+  **correo o identidad** (si el usuario tiene una identidad asignada).
 - Roles: **super_admin** (gestiona usuarios y todo), **admin** (gestiona el
   negocio) y **vendedor** (vende, consulta). La pantalla **Usuarios** (crear,
-  editar, activar/desactivar) solo la ve el super_admin.
+  editar, activar/desactivar, **asignar identidad** y **restablecer contraseña**
+  —genera una temporal que se muestra una vez—) solo la ve el super_admin.
 - Los usuarios **no se borran**: se desactivan (`activo = false`).
 - Endpoints principales: `POST /api/auth/login`, `GET /api/auth/me`,
   `GET|POST /api/usuarios`, `PATCH /api/usuarios/:id`,

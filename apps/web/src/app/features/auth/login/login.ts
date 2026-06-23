@@ -38,7 +38,8 @@ export class LoginPage {
   protected readonly error = signal<string | null>(null);
 
   protected readonly form = this.fb.group({
-    email: ['', [Validators.required, Validators.email]],
+    // Acepta correo O identidad: solo se exige que no esté vacío.
+    identificador: ['', [Validators.required]],
     password: ['', [Validators.required]],
   });
 
@@ -50,8 +51,8 @@ export class LoginPage {
     this.error.set(null);
     this.cargando.set(true);
 
-    const { email, password } = this.form.getRawValue();
-    this.auth.login(email, password).subscribe({
+    const { identificador, password } = this.form.getRawValue();
+    this.auth.login(identificador, password).subscribe({
       next: () => {
         this.cargando.set(false);
         void this.router.navigate(['/']);
@@ -60,7 +61,7 @@ export class LoginPage {
         this.cargando.set(false);
         this.error.set(
           err?.status === 401
-            ? 'Email o contraseña incorrectos.'
+            ? 'Correo/identidad o contraseña incorrectos.'
             : 'No se pudo iniciar sesión. Inténtalo de nuevo.',
         );
       },

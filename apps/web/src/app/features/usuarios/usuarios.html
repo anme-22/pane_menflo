@@ -25,6 +25,7 @@
         <tr>
           <th>Nombre</th>
           <th>Email</th>
+          <th>Identidad</th>
           <th>Rol</th>
           <th>Estado</th>
           <th class="text-right">Acciones</th>
@@ -35,6 +36,7 @@
         <tr>
           <td><span class="p-column-title font-medium sm:hidden">Nombre </span>{{ u.nombre }}</td>
           <td><span class="p-column-title font-medium sm:hidden">Email </span>{{ u.email }}</td>
+          <td><span class="p-column-title font-medium sm:hidden">Identidad </span>{{ u.identidad ?? '—' }}</td>
           <td>
             <span class="p-column-title font-medium sm:hidden">Rol </span>
             <p-tag [value]="etiquetaRol(u.rol)" severity="info" />
@@ -56,6 +58,14 @@
               (onClick)="abrirEdicion(u)"
             />
             <p-button
+              icon="pi pi-key"
+              severity="secondary"
+              [text]="true"
+              [rounded]="true"
+              ariaLabel="Restablecer contraseña"
+              (onClick)="abrirReset(u)"
+            />
+            <p-button
               [icon]="u.activo ? 'pi pi-ban' : 'pi pi-check'"
               [severity]="u.activo ? 'danger' : 'success'"
               [text]="true"
@@ -69,7 +79,7 @@
 
       <ng-template pTemplate="emptymessage">
         <tr>
-          <td colspan="5" class="p-4 text-center text-muted">No hay usuarios.</td>
+          <td colspan="6" class="p-4 text-center text-muted">No hay usuarios.</td>
         </tr>
       </ng-template>
     </p-table>
@@ -99,6 +109,16 @@
       <input pInputText id="email" type="email" formControlName="email" class="w-full" />
       @if (form.controls.email.touched && form.controls.email.invalid) {
         <small class="text-red-500">Introduce un email válido.</small>
+      }
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="identidad" class="text-sm font-medium">
+        Identidad <span class="text-muted">(opcional · 13 dígitos · para entrar con ella)</span>
+      </label>
+      <input pInputText id="identidad" inputmode="numeric" maxlength="13" formControlName="identidad" class="w-full" />
+      @if (form.controls.identidad.touched && form.controls.identidad.invalid) {
+        <small class="text-red-500">La identidad debe tener 13 dígitos.</small>
       }
     </div>
 
@@ -151,4 +171,35 @@
       />
     </div>
   </form>
+</p-dialog>
+
+<!-- Diálogo de restablecer contraseña -->
+<p-dialog
+  [visible]="resetVisible()"
+  (visibleChange)="resetVisible.set($event)"
+  [modal]="true"
+  [style]="{ width: '26rem' }"
+  header="Restablecer contraseña"
+  [dismissableMask]="true"
+>
+  <div class="flex flex-col gap-4 pt-2">
+    @if (reseteando()) {
+      <p class="text-sm text-muted">Generando contraseña temporal…</p>
+    } @else if (resetPassword(); as pass) {
+      <p class="text-sm">
+        Nueva contraseña temporal de <span class="font-medium">{{ resetUsuario()?.nombre }}</span>.
+        Cópiala y entrégasela; <span class="font-medium">no se volverá a mostrar</span>.
+      </p>
+      <div class="flex items-center gap-2">
+        <code
+          class="flex-1 rounded-md border px-3 py-2 text-lg font-semibold tracking-wider"
+          style="border-color: var(--surface-border); background-color: var(--surface-bg)"
+        >{{ pass }}</code>
+        <p-button icon="pi pi-copy" ariaLabel="Copiar" (onClick)="copiarPassword()" />
+      </div>
+    }
+    <div class="mt-1 flex justify-end">
+      <p-button type="button" label="Listo" severity="secondary" (onClick)="resetVisible.set(false)" />
+    </div>
+  </div>
 </p-dialog>

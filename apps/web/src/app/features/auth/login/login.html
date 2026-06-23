@@ -21,18 +21,18 @@
 
     <form [formGroup]="form" (ngSubmit)="enviar()" class="flex flex-col gap-4">
       <div class="flex flex-col gap-1">
-        <label for="email" class="text-sm font-medium">Email</label>
+        <label for="identificador" class="text-sm font-medium">Correo o identidad</label>
         <input
           pInputText
-          id="email"
-          type="email"
+          id="identificador"
+          type="text"
           autocomplete="username"
-          formControlName="email"
+          formControlName="identificador"
           class="w-full"
           [class.ng-invalid]="false"
         />
-        @if (form.controls.email.touched && form.controls.email.invalid) {
-          <small class="text-red-500">Introduce un email válido.</small>
+        @if (form.controls.identificador.touched && form.controls.identificador.invalid) {
+          <small class="text-red-500">Introduce tu correo o identidad.</small>
         }
       </div>
 

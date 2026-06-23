@@ -3,6 +3,7 @@ import {
   IsIn,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -28,6 +29,11 @@ export class ActualizarUsuarioDto implements ActualizarUsuarioRequest {
   @IsEmail({}, { message: 'El email no es válido.' })
   @MaxLength(150)
   email?: string;
+
+  // @IsOptional permite null (para quitar la identidad) y undefined (sin cambio).
+  @IsOptional()
+  @Matches(/^\d{13}$/, { message: 'La identidad debe tener 13 dígitos.' })
+  identidad?: string | null;
 
   @IsOptional()
   @IsString()

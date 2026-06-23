@@ -10,6 +10,7 @@ export function toUsuarioDto(usuario: Usuario): UsuarioDto {
     id: usuario.id,
     nombre: usuario.nombre,
     email: usuario.email,
+    identidad: usuario.identidad ? usuario.identidad.trim() : null,
     rol: usuario.rol,
     activo: usuario.activo,
     creadoEn: usuario.creadoEn.toISOString(),

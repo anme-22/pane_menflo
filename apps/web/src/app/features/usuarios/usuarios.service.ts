@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import type {
   ActualizarUsuarioRequest,
   CrearUsuarioRequest,
+  RestablecerPasswordResponse,
   UsuarioDto,
 } from '@pane/shared';
 import { API_BASE } from '../../core/api';
@@ -28,5 +29,13 @@ export class UsuariosService {
 
   cambiarEstado(id: number, activo: boolean): Observable<UsuarioDto> {
     return this.http.patch<UsuarioDto>(`${this.url}/${id}/estado`, { activo });
+  }
+
+  /** Restablece la contraseña; devuelve la temporal generada (mostrar una vez). */
+  restablecerPassword(id: number): Observable<RestablecerPasswordResponse> {
+    return this.http.patch<RestablecerPasswordResponse>(
+      `${this.url}/${id}/password`,
+      {},
+    );
   }
 }

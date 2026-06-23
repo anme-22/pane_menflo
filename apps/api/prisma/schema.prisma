@@ -87,6 +87,9 @@ model Usuario {
   id            Int        @id @default(autoincrement())
   nombre        String     @db.VarChar(100)
   email         String     @unique @db.VarChar(150)
+  // Identificador alternativo de login (cédula). Opcional y único; en Postgres
+  // una columna única nullable admite varios NULL sin chocar.
+  identidad     String?    @unique @db.Char(13)
   passwordHash  String     @map("password_hash")
   rol           RolUsuario
   activo        Boolean    @default(true)

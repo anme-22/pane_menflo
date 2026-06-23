@@ -8,7 +8,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import type { UsuarioDto } from '@pane/shared';
+import type { RestablecerPasswordResponse, UsuarioDto } from '@pane/shared';
 import type { Usuario } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -51,6 +51,14 @@ export class UsuariosController {
     @Body() dto: ActualizarUsuarioDto,
   ): Promise<UsuarioDto> {
     return this.usuariosService.actualizar(id, dto);
+  }
+
+  /** Restablece la contraseña: genera una temporal y la devuelve una vez. */
+  @Patch(':id/password')
+  restablecerPassword(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<RestablecerPasswordResponse> {
+    return this.usuariosService.restablecerPassword(id);
   }
 
   @Patch(':id/estado')

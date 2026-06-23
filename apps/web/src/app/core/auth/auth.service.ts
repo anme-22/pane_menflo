@@ -28,10 +28,10 @@ export class AuthService {
   /** Atajos de rol para mostrar/ocultar UI. */
   readonly esSuperAdmin = computed(() => this.usuario()?.rol === 'super_admin');
 
-  /** Inicia sesión y guarda la sesión si tiene éxito. */
-  login(email: string, password: string): Observable<LoginResponse> {
+  /** Inicia sesión (con correo o identidad) y guarda la sesión si tiene éxito. */
+  login(identificador: string, password: string): Observable<LoginResponse> {
     return this.http
-      .post<LoginResponse>(`${API_BASE}/auth/login`, { email, password })
+      .post<LoginResponse>(`${API_BASE}/auth/login`, { identificador, password })
       .pipe(tap((res) => this.guardarSesion(res.accessToken, res.usuario)));
   }
 

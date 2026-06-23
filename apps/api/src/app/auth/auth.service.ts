@@ -20,12 +20,17 @@ export class AuthService {
 
   /** Valida credenciales y devuelve el usuario, o lanza 401. */
   private async validarCredenciales(
-    email: string,
+    identificador: string,
     password: string,
   ): Promise<Usuario> {
-    const usuario = await this.prisma.usuario.findUnique({ where: { email } });
+    // El identificador casa contra el correo O la identidad (sin adivinar el
+    // formato: un correo no casa una cédula y viceversa).
+    const id = identificador.trim();
+    const usuario = await this.prisma.usuario.findFirst({
+      where: { OR: [{ email: id }, { identidad: id }] },
+    });
 
-    // Mensaje genérico a propósito: no revelar si el email existe.
+    // Mensaje genérico a propósito: no revelar si la cuenta existe.
     const credencialesInvalidas = new UnauthorizedException(
       'Credenciales inválidas.',
     );
@@ -45,7 +50,10 @@ export class AuthService {
 
   /** Login: valida y emite el access token. */
   async login(dto: LoginDto): Promise<LoginResponse> {
-    const usuario = await this.validarCredenciales(dto.email, dto.password);
+    const usuario = await this.validarCredenciales(
+      dto.identificador,
+      dto.password,
+    );
 
     // Payload mínimo y no sensible (sin hash). El rol se verifica en cada
     // request porque la firma lo protege contra manipulación.

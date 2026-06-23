@@ -768,5 +768,35 @@ ocultamiento de UI por rol en Angular.
       limpiados [tablas de caja vacías, facturas de prueba borradas]. tests api[+4:
       fórmula del esperado, null, 409, 400 — 57 total] + web[+4: caja service — 41
       total] verdes.)
+- [x] Mejora — Login por identidad + reset de contraseña por super_admin
+      (Toca auth (F2). Migración 20260623120000_usuario_identidad [hecha a mano +
+      `migrate deploy`: el warning de la constraint única dispara un prompt
+      interactivo no soportado en este entorno]: columna `identidad` CHAR(13) NULLABLE
+      + índice ÚNICO en `usuario` [Postgres admite varios NULL en un único]. DECISIONES
+      con el usuario: identidad OPCIONAL al crear; reset = GENERAR una temporal y
+      mostrarla UNA vez [sin forzar cambio en el próximo login — esa pieza queda como
+      mejora futura]. El email sigue obligatorio y único; la identidad es un
+      identificador ALTERNATIVO de login. Backend: LoginRequest.email→`identificador`
+      [login.dto valida string no vacío]; AuthService busca con
+      `findFirst({ OR: [{email}, {identidad}] })` [sin adivinar formato]. UsuariosService:
+      crear/actualizar aceptan `identidad` [@IsOptional+@Matches(/^\d{13}$/); null la
+      quita; verificarIdentidadLibre→409] y `restablecerPassword` genera una temporal
+      aleatoria [crypto.randomInt sobre alfabeto sin ambiguos, 10 chars], la guarda
+      hasheada y la devuelve en claro UNA vez. Endpoint PATCH /usuarios/:id/password
+      [solo super_admin, como todo el módulo]. usuario.mapper expone identidad; el JWT
+      no cambia. Seed: super_admin toma identidad opcional de SUPERADMIN_IDENTIDAD
+      [.env.example + README actualizados]. libs/shared: +identidad en UsuarioDto/Crear/
+      Actualizar, LoginRequest.identificador, RestablecerPasswordResponse. Web: login con
+      campo único "Correo o identidad" [sin validador de email]; auth.service.login
+      (identificador,password). Usuarios: campo identidad [opcional, 13 dígitos, pattern],
+      columna Identidad, botón "Restablecer contraseña" → diálogo que muestra la temporal
+      con botón Copiar [navigator.clipboard]. Verificado contra BD [e2e 16/16: crear con
+      identidad, login por identidad y por correo (ambos), identidad duplicada 409, 12
+      dígitos 400, reset devuelve temporal y la vieja deja de servir (401)/la temporal
+      sirve (200), quitar identidad (null) → login por identidad 401 pero por correo 200,
+      identificador inexistente 401] y UI [campo "Correo o identidad", login, columna +
+      campo identidad, botón de reset; sin tocar la clave del admin]; usuarios de prueba
+      borrados. tests api[57, cubierto por e2e] + web[+2: usuarios service reset/identidad
+      + login body identificador — 43 total] verdes.)
 - [ ] Feature 11 — Deploy
 - [ ] Feature 12 — Configuración

@@ -72,6 +72,9 @@ async function main() {
     const email = process.env.SUPERADMIN_EMAIL;
     const password = process.env.SUPERADMIN_PASSWORD;
     const nombre = process.env.SUPERADMIN_NOMBRE ?? 'Super Admin';
+    // Identidad opcional (13 dígitos): habilita el login por identidad.
+    const identidadEnv = process.env.SUPERADMIN_IDENTIDAD?.trim();
+    const identidad = identidadEnv && /^\d{13}$/.test(identidadEnv) ? identidadEnv : null;
 
     if (!email || !password) {
       console.warn(
@@ -80,9 +83,9 @@ async function main() {
     } else {
       const passwordHash = await bcrypt.hash(password, 10);
       await prisma.usuario.create({
-        data: { nombre, email, passwordHash, rol: RolUsuario.super_admin, activo: true },
+        data: { nombre, email, identidad, passwordHash, rol: RolUsuario.super_admin, activo: true },
       });
-      console.log(`✓ Super admin creado (${email}).`);
+      console.log(`✓ Super admin creado (${email}${identidad ? `, identidad ${identidad}` : ''}).`);
     }
   } else {
     console.log('• Ya existe un super_admin, se omite.');
