@@ -31,6 +31,11 @@ export class ActualizarFacturaDto implements ActualizarFacturaRequest {
   metodoPago?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  motivoCortesia?: string;
+
+  @IsOptional()
   @IsArray()
   @ArrayMinSize(1, { message: 'La factura debe tener al menos una línea.' })
   @ValidateNested({ each: true })

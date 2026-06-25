@@ -194,7 +194,7 @@
       <span class="text-sm font-medium">Líneas</span>
       @for (grupo of items.controls; track $index; let i = $index) {
         <div [formGroup]="$any(grupo)" class="grid grid-cols-12 items-center gap-2">
-          <div class="col-span-12 sm:col-span-5">
+          <div class="col-span-12 sm:col-span-4">
             <p-select
               formControlName="productoId"
               [options]="productosActivos()"
@@ -207,14 +207,22 @@
               styleClass="w-full"
             />
           </div>
-          <div class="col-span-4 sm:col-span-2">
+          <div class="col-span-3 sm:col-span-2">
             <p-inputnumber formControlName="cantidad" [min]="0" [maxFractionDigits]="2" placeholder="Cant." styleClass="w-full" inputStyleClass="w-full" />
           </div>
-          <div class="col-span-4 sm:col-span-2">
+          <div class="col-span-3 sm:col-span-2">
             <p-inputnumber formControlName="tasaImpuesto" [min]="0" [max]="1" [maxFractionDigits]="4" placeholder="Tasa" styleClass="w-full" inputStyleClass="w-full" />
           </div>
-          <div class="col-span-3 sm:col-span-2 text-right text-sm text-muted">
-            {{ dineroTexto(precioDe(grupo.value.productoId) * (grupo.value.cantidad || 0)) }}
+          <div class="col-span-3 sm:col-span-2 flex items-center gap-1">
+            <p-checkbox formControlName="esCortesia" [binary]="true" [inputId]="'cort' + i" />
+            <label [for]="'cort' + i" class="text-xs text-muted">Cortesía</label>
+          </div>
+          <div class="col-span-2 sm:col-span-1 text-right text-sm">
+            @if (grupo.value.esCortesia) {
+              <span class="text-xs font-medium text-primary-600">GRATIS</span>
+            } @else {
+              <span class="text-muted">{{ dineroTexto(precioDe(grupo.value.productoId) * (grupo.value.cantidad || 0)) }}</span>
+            }
           </div>
           <div class="col-span-1 flex justify-end">
             <p-button icon="pi pi-trash" severity="danger" [text]="true" [rounded]="true" ariaLabel="Quitar" [disabled]="items.length === 1" (onClick)="quitarLinea(i)" />
@@ -224,10 +232,21 @@
       <p-button label="Agregar línea" icon="pi pi-plus" severity="secondary" [text]="true" size="small" (onClick)="agregarLinea()" />
     </div>
 
+    @if (hayCortesia()) {
+      <div class="flex flex-col gap-1">
+        <label for="motivoCortesia" class="text-sm font-medium">Motivo de la cortesía (obligatorio)</label>
+        <input id="motivoCortesia" pInputText formControlName="motivoCortesia"
+          placeholder="Ej. el cliente tuvo un problema con el pan" class="w-full" />
+      </div>
+    }
+
     @if (totales(); as t) {
       <div class="flex flex-col gap-1 rounded-lg border px-3 py-2 text-sm" style="border-color: var(--surface-border)">
         <div class="flex justify-between text-muted"><span>Subtotal</span><span>{{ dineroTexto(t.subtotal) }}</span></div>
         <div class="flex justify-between text-muted"><span>Impuesto</span><span>{{ dineroTexto(t.impuesto) }}</span></div>
+        @if (t.cortesia > 0) {
+          <div class="flex justify-between text-muted"><span>Cortesía (valor regalado)</span><span>−{{ dineroTexto(t.cortesia) }}</span></div>
+        }
         <div class="flex justify-between font-semibold text-primary-600"><span>Total</span><span>{{ dineroTexto(t.total) }}</span></div>
       </div>
     }
@@ -348,20 +367,34 @@
           <tbody>
             @for (d of f.detalles; track d.id) {
               <tr class="border-t" style="border-color: var(--surface-border)">
-                <td class="px-3 py-2">{{ d.nombreProducto }}</td>
+                <td class="px-3 py-2">
+                  {{ d.nombreProducto }}
+                  @if (d.esCortesia) { <span class="ml-1 text-xs font-medium text-primary-600">(cortesía)</span> }
+                </td>
                 <td class="px-3 py-2 text-right">{{ d.cantidad }}</td>
                 <td class="px-3 py-2 text-right">{{ dineroTexto(d.precioUnitario) }}</td>
                 <td class="px-3 py-2 text-right">{{ dineroTexto(d.impuestoLinea) }}</td>
-                <td class="px-3 py-2 text-right">{{ dineroTexto(d.totalLinea) }}</td>
+                <td class="px-3 py-2 text-right">
+                  @if (d.esCortesia) { <span class="text-primary-600">GRATIS</span> } @else { {{ dineroTexto(d.totalLinea) }} }
+                </td>
               </tr>
             }
           </tbody>
         </table>
       </div>
 
+      @if (f.motivoCortesia) {
+        <p class="rounded-md border px-3 py-2 text-sm text-muted" style="border-color: var(--surface-border)">
+          <span class="font-medium">Cortesía:</span> valor regalado {{ dineroTexto(f.totalCortesia) }} · {{ f.motivoCortesia }}
+        </p>
+      }
+
       <div class="flex flex-col items-end gap-1 text-sm">
         <span class="text-muted">Subtotal: {{ dineroTexto(f.subtotal) }}</span>
         <span class="text-muted">Impuesto: {{ dineroTexto(f.impuesto) }}</span>
+        @if (Number(f.totalCortesia) > 0) {
+          <span class="text-muted">Cortesía (valor regalado): −{{ dineroTexto(f.totalCortesia) }}</span>
+        }
         <span class="font-semibold text-primary-600">Total: {{ dineroTexto(f.total) }}</span>
         <span class="text-muted">Saldo: {{ dineroTexto(f.saldoPendiente) }}</span>
       </div>

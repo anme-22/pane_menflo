@@ -9,6 +9,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
+import { CheckboxModule } from 'primeng/checkbox';
 import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
@@ -68,6 +69,7 @@ const SEV_PAGO: Record<EstadoPago, 'danger' | 'warn' | 'success'> = {
     FormsModule,
     TableModule,
     ButtonModule,
+    CheckboxModule,
     DialogModule,
     InputNumberModule,
     InputTextModule,
@@ -88,6 +90,9 @@ export class FacturasPage implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly toast = inject(MessageService);
   private readonly confirm = inject(ConfirmationService);
+
+  /** Expuesto para la plantilla (comparar importes string > 0). */
+  protected readonly Number = Number;
 
   protected readonly facturas = signal<FacturaResumenDto[]>([]);
   protected readonly productos = signal<ProductoDto[]>([]);
@@ -133,6 +138,7 @@ export class FacturasPage implements OnInit {
     clienteIdentidad: [null as string | null],
     tipoPago: ['CONTADO' as 'CONTADO' | 'CREDITO', [Validators.required]],
     metodoPago: ['Efectivo' as string],
+    motivoCortesia: [''],
     motivo: [''],
     items: this.fb.array([this.grupoLinea()]),
   });
@@ -142,6 +148,12 @@ export class FacturasPage implements OnInit {
   protected readonly esContado = computed(() => {
     this.formValor();
     return this.form.controls.tipoPago.value === 'CONTADO';
+  });
+
+  /** ¿Hay alguna línea marcada como cortesía? (exige motivo). */
+  protected readonly hayCortesia = computed(() => {
+    this.formValor();
+    return this.form.getRawValue().items.some((it) => it.esCortesia);
   });
 
   // --- detalle / imprimir ---
@@ -172,22 +184,28 @@ export class FacturasPage implements OnInit {
       .map((c) => ({ label: `${c.nombre} ${c.apellido}`, value: c.identidad })),
   );
 
-  /** Totales en vivo del editor (recalcula al cambiar el form). */
+  /** Totales en vivo del editor (recalcula al cambiar el form). Las líneas de
+   * cortesía no cobran: no suman al total, pero su valor se reporta aparte. */
   protected readonly totales = computed(() => {
     this.formValor();
     const items = this.form.getRawValue().items;
     let subtotal = 0;
     let impuesto = 0;
+    let cortesia = 0;
     for (const it of items) {
       const precio = this.precioDe(it.productoId);
       if (!precio || !it.cantidad) {
         continue;
       }
       const base = precio * it.cantidad;
+      if (it.esCortesia) {
+        cortesia += base;
+        continue;
+      }
       subtotal += base;
       impuesto += base * (it.tasaImpuesto ?? 0);
     }
-    return { subtotal, impuesto, total: subtotal + impuesto };
+    return { subtotal, impuesto, total: subtotal + impuesto, cortesia };
   });
 
   constructor() {
@@ -271,6 +289,7 @@ export class FacturasPage implements OnInit {
       productoId: [null as number | null, [Validators.required]],
       cantidad: [1 as number | null, [Validators.required, Validators.min(0.01)]],
       tasaImpuesto: [tasa as number | null],
+      esCortesia: [false],
     });
   }
 
@@ -303,6 +322,7 @@ export class FacturasPage implements OnInit {
       clienteIdentidad: null,
       tipoPago: 'CONTADO',
       metodoPago: 'Efectivo',
+      motivoCortesia: '',
       motivo: '',
     });
     this.items.clear();
@@ -324,6 +344,7 @@ export class FacturasPage implements OnInit {
           clienteIdentidad: f.clienteIdentidad,
           tipoPago: f.tipoPago,
           metodoPago: f.metodoPago ?? 'Efectivo',
+          motivoCortesia: f.motivoCortesia ?? '',
           motivo: '',
         });
         // ...y DESPUÉS se reconstruyen las líneas con sus valores.
@@ -334,6 +355,7 @@ export class FacturasPage implements OnInit {
             productoId: d.productoId,
             cantidad: Number(d.cantidad),
             tasaImpuesto: Number(d.tasaImpuesto),
+            esCortesia: d.esCortesia,
           });
           this.items.push(g);
         }
@@ -356,6 +378,7 @@ export class FacturasPage implements OnInit {
       productoId: it.productoId as number,
       cantidad: it.cantidad as number,
       tasaImpuesto: it.tasaImpuesto ?? 0,
+      esCortesia: it.esCortesia,
     }));
     const id = this.editandoId();
 
@@ -367,6 +390,14 @@ export class FacturasPage implements OnInit {
     // El método de pago solo aplica a contado (el crédito lo lleva por abono).
     const metodoPago = v.tipoPago === 'CONTADO' ? v.metodoPago : undefined;
 
+    // Si hay cortesías, el motivo es obligatorio.
+    const hayCortesia = items.some((it) => it.esCortesia);
+    const motivoCortesia = v.motivoCortesia.trim();
+    if (hayCortesia && !motivoCortesia) {
+      this.error('Una cortesía requiere indicar el motivo.');
+      return;
+    }
+
     this.guardando.set(true);
     if (id === null) {
       this.service
@@ -374,6 +405,7 @@ export class FacturasPage implements OnInit {
           clienteIdentidad: v.clienteIdentidad,
           tipoPago: v.tipoPago,
           metodoPago,
+          motivoCortesia: hayCortesia ? motivoCortesia : undefined,
           items,
         })
         .subscribe({
@@ -386,6 +418,7 @@ export class FacturasPage implements OnInit {
           clienteIdentidad: v.clienteIdentidad,
           tipoPago: v.tipoPago,
           metodoPago,
+          motivoCortesia: hayCortesia ? motivoCortesia : undefined,
           items,
           motivo: v.motivo.trim() || undefined,
         })
@@ -498,11 +531,15 @@ export class FacturasPage implements OnInit {
     const filas = f.detalles
       .map(
         (d) =>
-          `<tr><td>${d.nombreProducto}</td><td style="text-align:right">${d.cantidad}</td>` +
+          `<tr><td>${d.nombreProducto}${d.esCortesia ? ' (cortesía)' : ''}</td><td style="text-align:right">${d.cantidad}</td>` +
           `<td style="text-align:right">${dinero.format(Number(d.precioUnitario))}</td>` +
-          `<td style="text-align:right">${dinero.format(Number(d.totalLinea))}</td></tr>`,
+          `<td style="text-align:right">${d.esCortesia ? 'GRATIS' : dinero.format(Number(d.totalLinea))}</td></tr>`,
       )
       .join('');
+    const cortesiaHtml =
+      Number(f.totalCortesia) > 0
+        ? `<div class="tot">Cortesía (valor regalado): -${dinero.format(Number(f.totalCortesia))}${f.motivoCortesia ? ` (${f.motivoCortesia})` : ''}</div>`
+        : '';
     const cliente = f.clienteNombre ?? 'Consumidor final';
     const numero = f.numero ?? String(f.id);
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Factura ${numero}</title>
@@ -520,6 +557,7 @@ export class FacturasPage implements OnInit {
       <tbody>${filas}</tbody></table>
       <div class="tot">Subtotal: ${dinero.format(Number(f.subtotal))}</div>
       <div class="tot">Impuesto: ${dinero.format(Number(f.impuesto))}</div>
+      ${cortesiaHtml}
       <div class="tot"><strong>Total: ${dinero.format(Number(f.total))}</strong></div>
       <div class="tot">Saldo pendiente: ${dinero.format(Number(f.saldoPendiente))}</div>
       </body></html>`;

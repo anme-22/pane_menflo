@@ -38,8 +38,9 @@ function toDetalleDto(d: FacturaDetalle): FacturaDetalleDto {
   const precio = Number(d.precioUnitario);
   const cantidad = Number(d.cantidad);
   const tasa = Number(d.tasaImpuesto);
-  const subtotal = r2(precio * cantidad);
-  const impuesto = r2(subtotal * tasa);
+  // Cortesía: conserva el snapshot de precio, pero NO cobra (subtotal/impuesto 0).
+  const subtotal = d.esCortesia ? 0 : r2(precio * cantidad);
+  const impuesto = d.esCortesia ? 0 : r2(subtotal * tasa);
   return {
     id: d.id,
     productoId: d.productoId,
@@ -50,6 +51,7 @@ function toDetalleDto(d: FacturaDetalle): FacturaDetalleDto {
     subtotalLinea: subtotal.toString(),
     impuestoLinea: impuesto.toString(),
     totalLinea: r2(subtotal + impuesto).toString(),
+    esCortesia: d.esCortesia,
   };
 }
 
@@ -62,6 +64,10 @@ export function toFacturaDto(f: FacturaConRelaciones): FacturaDto {
     f.estado,
     abonos.map((a) => Number(a.monto)),
   );
+  // Valor regalado en cortesías (informativo): Σ precio×cantidad de esas líneas.
+  const totalCortesia = (f.detalles ?? [])
+    .filter((d) => d.esCortesia)
+    .reduce((s, d) => s + Number(d.precioUnitario) * Number(d.cantidad), 0);
   return {
     id: f.id,
     numero: f.numero,
@@ -76,6 +82,8 @@ export function toFacturaDto(f: FacturaConRelaciones): FacturaDto {
     subtotal: f.subtotal.toString(),
     impuesto: f.impuesto.toString(),
     total: f.total.toString(),
+    totalCortesia: r2(totalCortesia).toString(),
+    motivoCortesia: f.motivoCortesia,
     cai: f.cai,
     caiRango: f.caiRango,
     caiFechaLimite: f.caiFechaLimite?.toISOString() ?? null,

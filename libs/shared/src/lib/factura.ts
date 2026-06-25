@@ -55,6 +55,8 @@ export interface FacturaDetalleDto {
   impuestoLinea: string;
   /** subtotalLinea + impuestoLinea. */
   totalLinea: string;
+  /** true = línea de cortesía (no cobra; total 0). */
+  esCortesia: boolean;
 }
 
 /** Abono (pago parcial). */
@@ -93,6 +95,10 @@ export interface FacturaDto {
   subtotal: string;
   impuesto: string;
   total: string;
+  /** Valor regalado en cortesías (Σ precio×cantidad de líneas de cortesía). Informativo. */
+  totalCortesia: string;
+  /** Motivo de la cortesía (si hay líneas de cortesía). */
+  motivoCortesia: string | null;
   cai: string | null;
   caiRango: string | null;
   caiFechaLimite: string | null;
@@ -129,6 +135,8 @@ export interface LineaFacturaInput {
   cantidad: number;
   /** Tasa de impuesto (0..1). Si se omite, sale del default (0 o ISV). */
   tasaImpuesto?: number;
+  /** true = cortesía (la línea no cobra). Si hay alguna, `motivoCortesia` es obligatorio. */
+  esCortesia?: boolean;
 }
 
 /** Filtros + paginación del listado de facturas. */
@@ -150,6 +158,8 @@ export interface CrearFacturaRequest {
   tipoPago: TipoPago;
   /** Método de pago. Obligatorio si `tipoPago` es CONTADO; ignorado en crédito. */
   metodoPago?: string;
+  /** Motivo de la cortesía. Obligatorio si alguna línea es cortesía. */
+  motivoCortesia?: string;
   items: LineaFacturaInput[];
 }
 
@@ -162,6 +172,8 @@ export interface ActualizarFacturaRequest {
   tipoPago?: TipoPago;
   /** Método de pago (CONTADO). Cambiarlo en una EMITIDA exige `motivo`. */
   metodoPago?: string;
+  /** Motivo de la cortesía. Obligatorio si alguna línea es cortesía. */
+  motivoCortesia?: string;
   items?: LineaFacturaInput[];
   /** Obligatorio si la factura ya está EMITIDA. */
   motivo?: string;

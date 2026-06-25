@@ -35,6 +35,8 @@ interface LineaResuelta {
   precioUnitario: number;
   cantidad: number;
   tasaImpuesto: number;
+  /** true = cortesía: conserva el snapshot pero no cobra. */
+  esCortesia: boolean;
 }
 
 /** Relaciones que se cargan para mapear una factura completa. */
@@ -112,6 +114,10 @@ export class FacturasService {
     const config = await this.configuracion.obtener();
     await this.validarCliente(dto.clienteIdentidad);
     const lineas = await this.construirLineas(dto.items, config);
+    const motivoCortesia = this.resolverMotivoCortesia(
+      lineas.some((l) => l.esCortesia),
+      dto.motivoCortesia,
+    );
     const totales = this.calcular(lineas);
     const sucursalId = await this.sucursales.obtenerDefaultId();
 
@@ -122,6 +128,7 @@ export class FacturasService {
         usuarioId,
         tipoPago: dto.tipoPago,
         metodoPago: this.resolverMetodoPago(dto.tipoPago, dto.metodoPago),
+        motivoCortesia,
         estado: 'BORRADOR',
         subtotal: totales.subtotal,
         impuesto: totales.impuesto,
@@ -182,6 +189,24 @@ export class FacturasService {
     }
     const cambiaMetodo = nuevoMetodo !== undefined && nuevoMetodo !== factura.metodoPago;
 
+    // Motivo de cortesía: se recalcula si cambian las líneas (o si se reenvía el
+    // motivo sobre las cortesías existentes). undefined = sin cambio.
+    let nuevoMotivoCortesia: string | null | undefined = undefined;
+    if (lineas) {
+      nuevoMotivoCortesia = this.resolverMotivoCortesia(
+        lineas.some((l) => l.esCortesia),
+        dto.motivoCortesia,
+      );
+    } else if (dto.motivoCortesia !== undefined) {
+      nuevoMotivoCortesia = this.resolverMotivoCortesia(
+        factura.detalles.some((d) => d.esCortesia),
+        dto.motivoCortesia,
+      );
+    }
+    const cambiaMotivoCortesia =
+      nuevoMotivoCortesia !== undefined &&
+      nuevoMotivoCortesia !== factura.motivoCortesia;
+
     // Bitácora: solo para EMITIDA, una fila por campo cambiado.
     const entradas: EntradaBitacora[] = [];
     if (emitida) {
@@ -220,6 +245,14 @@ export class FacturasService {
           motivo: dto.motivo,
         });
       }
+      if (cambiaMotivoCortesia) {
+        entradas.push({
+          campo: 'motivoCortesia',
+          valorAnterior: factura.motivoCortesia,
+          valorNuevo: nuevoMotivoCortesia ?? null,
+          motivo: dto.motivo,
+        });
+      }
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -232,6 +265,7 @@ export class FacturasService {
               : undefined,
           tipoPago: dto.tipoPago ?? undefined,
           metodoPago: nuevoMetodo,
+          motivoCortesia: nuevoMotivoCortesia,
           ...(totales
             ? {
                 subtotal: totales.subtotal,
@@ -282,6 +316,7 @@ export class FacturasService {
         precioUnitario: Number(d.precioUnitario),
         cantidad: Number(d.cantidad),
         tasaImpuesto: Number(d.tasaImpuesto),
+        esCortesia: d.esCortesia,
       })),
     );
 
@@ -451,19 +486,45 @@ export class FacturasService {
         precioUnitario: Number(precio.precio),
         cantidad: it.cantidad,
         tasaImpuesto: it.tasaImpuesto ?? tasaDefault,
+        esCortesia: it.esCortesia ?? false,
       });
     }
     return lineas;
   }
 
-  /** Aplica la estrategia de impuesto a las líneas → totales. */
+  /**
+   * Si hay líneas de cortesía, exige un motivo y lo devuelve; si no, null
+   * (no tiene sentido un motivo de cortesía sin cortesías).
+   */
+  private resolverMotivoCortesia(
+    hayCortesia: boolean,
+    motivoCortesia?: string,
+  ): string | null {
+    if (!hayCortesia) {
+      return null;
+    }
+    const motivo = motivoCortesia?.trim();
+    if (!motivo) {
+      throw new BadRequestException(
+        'Una cortesía requiere indicar el motivo (queda en la factura).',
+      );
+    }
+    return motivo;
+  }
+
+  /**
+   * Aplica la estrategia de impuesto a las líneas → totales. Las líneas de
+   * cortesía NO cobran, así que se excluyen del cálculo.
+   */
   private calcular(lineas: LineaResuelta[]) {
     return this.impuesto.calcular(
-      lineas.map((l) => ({
-        precioUnitario: l.precioUnitario,
-        cantidad: l.cantidad,
-        tasaImpuesto: l.tasaImpuesto,
-      })),
+      lineas
+        .filter((l) => !l.esCortesia)
+        .map((l) => ({
+          precioUnitario: l.precioUnitario,
+          cantidad: l.cantidad,
+          tasaImpuesto: l.tasaImpuesto,
+        })),
     );
   }
 }
