@@ -1,4 +1,12 @@
-import { IsInt, IsNumber, IsOptional, IsPositive, Max, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  Max,
+  Min,
+} from 'class-validator';
 import type { LineaFacturaInput } from '@pane/shared';
 
 /** Una línea de la factura (el precio/nombre se snapshotan en el servidor). */
@@ -15,4 +23,8 @@ export class LineaFacturaDto implements LineaFacturaInput {
   @Min(0, { message: 'La tasa no puede ser negativa.' })
   @Max(1, { message: 'La tasa va de 0 a 1 (ej. 0.15 = 15%).' })
   tasaImpuesto?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  esCortesia?: boolean;
 }

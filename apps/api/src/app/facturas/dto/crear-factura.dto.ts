@@ -4,7 +4,9 @@ import {
   IsArray,
   IsIn,
   IsOptional,
+  IsString,
   Matches,
+  MaxLength,
   ValidateNested,
 } from 'class-validator';
 import { METODOS_PAGO } from '@pane/shared';
@@ -25,6 +27,11 @@ export class CrearFacturaDto implements CrearFacturaRequest {
   @IsOptional()
   @IsIn(METODOS_PAGO, { message: 'Método de pago no válido.' })
   metodoPago?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  motivoCortesia?: string;
 
   @IsArray()
   @ArrayMinSize(1, { message: 'La factura debe tener al menos una línea.' })

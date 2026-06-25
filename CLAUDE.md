@@ -826,5 +826,34 @@ ocultamiento de UI por rol en Angular.
       paginador en clientes y facturas]; datos de prueba limpiados. tests api[+7:
       helpers de paginación — 64 total] + web[+2: clientes service params — 45 total]
       verdes.)
+- [x] Mejora — Cortesía en la venta ("dar bolsas")
+      (Regalar producto al cliente como cortesía, SIN tocar inventario de insumos
+      [decisión previa: el inventario es de insumos, no de pan]. DECISIÓN con el usuario:
+      LÍNEA de producto gratis [no descuento monetario]. Migración 20260625192458_
+      cortesia_factura: `factura_detalle.es_cortesia` BOOL default false +
+      `factura.motivo_cortesia` VARCHAR(300), ambas nullable/default [sin prompt]. La
+      línea de cortesía CONSERVA el snapshot de precio pero NO cobra: subtotal/impuesto/
+      total de esa línea = 0 y se EXCLUYE del cálculo de totales [FacturasService.calcular
+      filtra esCortesia antes de la estrategia de impuesto]. Si hay alguna línea de
+      cortesía, el MOTIVO es obligatorio [resolverMotivoCortesia → 400; null si no hay
+      cortesías]. Editar el motivo/cortesías en una EMITIDA exige motivo y deja bitácora
+      [campo motivoCortesia, igual que metodoPago]. El emitir recalcula excluyendo
+      cortesías. mapper: toDetalleDto pone la línea de cortesía en 0 y expone esCortesia;
+      toFacturaDto calcula totalCortesia [Σ precio×cantidad de cortesías, INFORMATIVO] y
+      expone motivoCortesia. libs/shared: +esCortesia en FacturaDetalleDto y
+      LineaFacturaInput; +totalCortesia/motivoCortesia en FacturaDto; +motivoCortesia en
+      Crear/ActualizarFacturaRequest. Web: en el editor, checkbox "Cortesía" por línea
+      [p-checkbox binary] → la línea muestra GRATIS y no suma al total [computed totales
+      con `cortesia` aparte], campo "Motivo de la cortesía" visible si hay alguna
+      [computed hayCortesia], validación de motivo. Detalle e impresión marcan las líneas
+      de cortesía [(cortesía)/GRATIS] y muestran "Cortesía (valor regalado) −L… · motivo".
+      Verificado contra BD [e2e 13/13: total excluye cortesía (15 con 2 normales +1
+      cortesía de L7.50), totalCortesia 7.50, línea cortesía totalLinea 0 con snapshot
+      7.50, cortesía sin motivo 400, emitir conserva total y cortesía, editar motivo en
+      EMITIDA deja bitácora] y UI [checkbox, GRATIS, campo de motivo]; factura de prueba
+      borrada. NOTA: el "valor regalado" (totalCortesia) queda disponible para un reporte
+      futuro de cortesías/mermas de producto terminado [ver merma-producto-terminado].
+      tests api[+2: mapper de cortesía — 66 total] + web[45 total, cubierto por e2e]
+      verdes.)
 - [ ] Feature 11 — Deploy
 - [ ] Feature 12 — Configuración

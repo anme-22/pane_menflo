@@ -493,6 +493,8 @@ model Factura {
   subtotal         Decimal       @default(0) @db.Decimal(12, 2)
   impuesto         Decimal       @default(0) @db.Decimal(12, 2)
   total            Decimal       @default(0) @db.Decimal(12, 2)
+  // Motivo de la cortesía (obligatorio si hay líneas de cortesía); deja rastro.
+  motivoCortesia   String?       @map("motivo_cortesia") @db.VarChar(300)
   cai              String?       @db.VarChar(50)
   caiRango         String?       @map("cai_rango") @db.VarChar(100)
   caiFechaLimite   DateTime?     @map("cai_fecha_limite") @db.Date
@@ -525,6 +527,9 @@ model FacturaDetalle {
   precioUnitario Decimal @map("precio_unitario") @db.Decimal(12, 2)
   cantidad       Decimal @db.Decimal(12, 2)
   tasaImpuesto   Decimal @default(0) @map("tasa_impuesto") @db.Decimal(5, 4)
+  // Cortesía: la línea NO cobra (total 0) pero conserva el snapshot de precio
+  // para saber el valor regalado. El motivo va a nivel de factura.
+  esCortesia     Boolean @default(false) @map("es_cortesia")
 
   factura  Factura  @relation(fields: [facturaId], references: [id], onDelete: Cascade)
   producto Producto @relation(fields: [productoId], references: [id])
