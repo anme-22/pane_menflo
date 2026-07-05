@@ -1,0 +1,5 @@
+# Los scripts de shell DEBEN conservar saltos de línea LF: un .sh con CRLF no
+# arranca dentro de los contenedores Alpine (error "no such file or directory").
+*.sh text eol=lf
+docker/entrypoint.sh text eol=lf
+scripts/*.sh text eol=lf

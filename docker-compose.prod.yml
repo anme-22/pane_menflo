@@ -1,0 +1,55 @@
+# ============================================================================
+# Docker Compose de PRODUCCIÓN. Es APARTE del docker-compose.yml de desarrollo
+# (aquel solo levanta Postgres). Este levanta Postgres + la app (API que además
+# sirve el frontend Angular compilado, en un solo contenedor para ahorrar RAM).
+#
+# Todo por variables de entorno (archivo .env; ver .env.prod.example). Nada
+# hardcodeado. El mismo archivo sirve para la laptop Windows y para el VPS Linux.
+#
+#   Uso:  docker compose -f docker-compose.prod.yml up -d --build
+# ============================================================================
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pane-prod-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      # Publicado para poder cargar el censo y conectar DBeaver desde el host.
+      # En el host se puede cambiar con POSTGRES_PORT; dentro siempre es 5432.
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      # Volumen PROPIO de producción, distinto del de desarrollo (pane_pgdata),
+      # para que los datos reales persistan sin mezclarse con los de dev.
+      - pane_pgdata_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pane-prod-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Secretos y banderas se cargan del .env (JWT_*, SUPERADMIN_*, SEED_DEMO).
+    env_file:
+      - .env
+    environment:
+      # DATABASE_URL se DERIVA aquí para que el contenedor siempre apunte al
+      # servicio `postgres` (no a localhost), pase lo que pase en el .env.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    ports:
+      # Puerto en el host (default 8080). Dentro del contenedor la API usa 3000.
+      - '${APP_PORT:-8080}:3000'
+
+volumes:
+  pane_pgdata_prod:

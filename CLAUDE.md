@@ -855,5 +855,43 @@ ocultamiento de UI por rol en Angular.
       futuro de cortesías/mermas de producto terminado [ver merma-producto-terminado].
       tests api[+2: mapper de cortesía — 66 total] + web[45 total, cubierto por e2e]
       verdes.)
-- [ ] Feature 11 — Deploy
+- [~] Feature 11 — Deploy (empaque de producción listo; falta la verificación
+      end-to-end con Docker en la laptop — este entorno no tiene Docker daemon)
+      (Empaque de PRODUCCIÓN con Docker, APARTE del docker-compose.yml de dev [que
+      NO se tocó; sigue levantando solo Postgres]. DECISIONES con el usuario:
+      la API sirve el frontend con `express.static` a mano [Opción A, SIN nueva
+      dependencia — @nestjs/serve-static v5 exige Express 5 y el repo está en
+      Express 4]; seed base siempre + seed demo solo si SEED_DEMO=true.
+      `Dockerfile` multi-stage: stage build con pnpm [corepack pnpm@10.28.1]
+      corre `prisma generate` + `nx build web` [SPA a dist/apps/web/browser] +
+      `nx build api` [webpack genera dist/apps/api/package.json solo con deps de
+      producción] + `esbuild` bundlea seed.ts/seed-demo.ts a JS plano
+      [--packages=external; los seeds solo usan dotenv/bcryptjs/@prisma/client];
+      stage runtime node:22-alpine [+openssl para engines musl] hace `npm install
+      --omit=dev` del package.json generado + CLI prisma@6.19.2 [--no-save] +
+      `prisma generate`, copia el web estático a /app/web, corre como usuario
+      `node`, HEALTHCHECK a /health. La API [main.ts] se tipa como
+      NestExpressApplication y, SOLO si existe WEB_STATIC_PATH con index.html,
+      delega en `serve-frontend.ts` [SOLID-S, separado]: useStaticAssets →
+      app.init() → fallback SPA registrado DESPUÉS de init [reenvía a index.html
+      cualquier GET que no sea /api* ni /health; recargar /facturas funciona]. En
+      dev la variable no existe → cero impacto. `docker/entrypoint.sh` [LF forzado
+      por .gitattributes]: `migrate deploy` con reintentos → seed base → seed demo
+      [si SEED_DEMO] → `exec node main.js`; todo idempotente. `docker-compose.prod.yml`
+      [raíz]: postgres:16-alpine [volumen PROPIO pane_pgdata_prod, distinto del de
+      dev] + app [build del Dockerfile, depends_on healthy, DATABASE_URL DERIVADA
+      al servicio `postgres`, ${APP_PORT:-8080}:3000], restart unless-stopped, todo
+      por .env. `.env.prod.example` [POSTGRES_*, DATABASE_URL, JWT_*, SUPERADMIN_*,
+      APP_PORT, SEED_DEMO]. RESPALDO: scripts/backup.{sh,ps1} [pg_dump -Fc vía
+      `docker cp`, binario-seguro también en PowerShell → backups/pane_FECHA.dump]
+      y restore.{sh,ps1}; backups/ ignorado en git salvo .gitkeep. El censo NO va
+      en la imagen [.dockerignore lo excluye; se carga aparte por psql, documentado].
+      README.deploy.md con las DOS secciones: laptop Windows [Docker Desktop,
+      .wslconfig 4GB, up -d, cargar censo, acceso por localhost e IP en LAN +
+      regla de firewall, respaldo por Programador de tareas] y migrar al VPS Linux
+      [instalar Docker, git + .env, up -d, restaurar respaldo, cron, notas
+      dominio+HTTPS con Caddy/Nginx]. NOTA: sin Docker en el entorno de desarrollo
+      no se pudo hacer `docker build`/`up` real; queda verificar en la laptop que
+      up -d levanta, migra+siembra idempotente y la app abre en localhost e IP.)
+- [ ] Feature 11 — Deploy (verificación end-to-end en la laptop con Docker)
 - [ ] Feature 12 — Configuración
