@@ -1,0 +1,26 @@
+# Contexto de build mínimo: se instala desde package-lock, no se copian artefactos.
+node_modules
+**/node_modules
+dist
+tmp
+out-tsc
+.nx/cache
+.nx/workspace-data
+.angular/cache
+.cache
+coverage
+.git
+.github
+.vscode
+.idea
+*.log
+
+# Secretos y respaldos: nunca entran a la imagen.
+.env
+.env.*
+!.env.example
+!.env.prod.example
+backups
+
+# El censo se carga aparte (no va en la imagen).
+apps/api/prisma/censo.sql

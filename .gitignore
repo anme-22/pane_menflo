@@ -25,6 +25,10 @@ coverage/
 censo.sql
 
 
+# Respaldos de la base (binarios con datos; se versiona solo la carpeta vacía).
+/backups/*
+!/backups/.gitkeep
+
 # Logs
 *.log
 npm-debug.log*

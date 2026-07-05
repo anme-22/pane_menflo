@@ -6,6 +6,10 @@ recetas, producción y reportes. Backend en **NestJS + Prisma**, frontend en
 
 > Estado actual: **Feature 10 — Reportes y ganancias** (ver `CLAUDE.md §10`).
 
+> 🚀 **¿Desplegar en producción con Docker?** (laptop Windows o VPS): ver
+> [`README.deploy.md`](./README.deploy.md). Este README cubre el entorno de
+> **desarrollo**; el de despliegue es un paquete aparte que no toca este flujo.
+
 ## Stack
 
 | Capa        | Tecnología                                        |
