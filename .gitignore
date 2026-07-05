@@ -22,7 +22,7 @@ coverage/
 .env
 .env.*
 !.env.example
-.sql
+censo.sql
 
 
 # Logs
