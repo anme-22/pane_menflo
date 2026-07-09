@@ -3,6 +3,7 @@ import type {
   ConsumoInsumosReporteDto,
   CuentasPorCobrarReporteDto,
   GananciaReporteDto,
+  VentasDetalladasReporteDto,
   VentasReporteDto,
 } from '@pane/shared';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -26,6 +27,14 @@ export class ReportesController {
     @Query('hasta') hasta?: string,
   ): Promise<VentasReporteDto> {
     return this.reportes.ventas(desde, hasta);
+  }
+
+  @Get('ventas-detalle')
+  ventasDetalle(
+    @Query('desde') desde?: string,
+    @Query('hasta') hasta?: string,
+  ): Promise<VentasDetalladasReporteDto> {
+    return this.reportes.ventasDetalladas(desde, hasta);
   }
 
   @Get('ganancia-por-producto')

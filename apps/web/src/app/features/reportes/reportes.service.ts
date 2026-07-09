@@ -5,6 +5,7 @@ import type {
   ConsumoInsumosReporteDto,
   CuentasPorCobrarReporteDto,
   GananciaReporteDto,
+  VentasDetalladasReporteDto,
   VentasReporteDto,
 } from '@pane/shared';
 import { API_BASE } from '../../core/api';
@@ -21,6 +22,13 @@ export class ReportesService {
 
   ventas(desde: string, hasta: string): Observable<VentasReporteDto> {
     return this.http.get<VentasReporteDto>(`${this.url}/ventas`, this.periodo(desde, hasta));
+  }
+
+  ventasDetalle(desde: string, hasta: string): Observable<VentasDetalladasReporteDto> {
+    return this.http.get<VentasDetalladasReporteDto>(
+      `${this.url}/ventas-detalle`,
+      this.periodo(desde, hasta),
+    );
   }
 
   gananciaPorProducto(desde: string, hasta: string): Observable<GananciaReporteDto> {

@@ -57,6 +57,83 @@
     }
   </div>
 
+  <!-- Ventas detalladas por día (libro de ventas) -->
+  <div>
+    <h2 class="mb-2 font-semibold">Ventas por día (detalle)</h2>
+    @if (ventasDetalle(); as vd) {
+      @if (vd.dias.length === 0) {
+        <div class="rounded-xl border p-4 text-center text-muted" style="border-color: var(--surface-border)">
+          Sin ventas en el periodo.
+        </div>
+      }
+      <div class="flex flex-col gap-4">
+        @for (dia of vd.dias; track dia.fecha) {
+          <div class="overflow-hidden rounded-xl border" style="background-color: var(--surface-card); border-color: var(--surface-border)">
+            <!-- Cabecera del día -->
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3" style="border-color: var(--surface-border)">
+              <span class="font-semibold text-primary-600">{{ fechaDiaTexto(dia.fecha) }}</span>
+              <span class="text-sm text-muted">{{ dia.numFacturas }} factura(s)</span>
+              <span class="font-semibold">Total del día: {{ dineroTexto(dia.total) }}</span>
+            </div>
+            <!-- Facturas del día -->
+            <div class="flex flex-col divide-y" style="border-color: var(--surface-border)">
+              @for (f of dia.facturas; track f.facturaId) {
+                <div class="px-4 py-3" style="border-color: var(--surface-border)">
+                  <div class="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <span class="font-medium">
+                      Factura #{{ f.numero ?? f.facturaId }}
+                      <span class="text-muted"> · {{ horaTexto(f.fecha) }}</span>
+                    </span>
+                    <span>{{ f.clienteNombre ?? 'Consumidor final' }}</span>
+                    <p-tag [value]="tipoPagoTexto(f.tipoPago)" severity="secondary" />
+                  </div>
+                  <table class="w-full text-sm">
+                    <thead>
+                      <tr class="text-muted">
+                        <th class="py-1 text-left font-normal">Producto</th>
+                        <th class="py-1 text-right font-normal">Cant.</th>
+                        <th class="py-1 text-right font-normal">Precio</th>
+                        <th class="py-1 text-right font-normal">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (l of f.lineas; track l.productoId) {
+                        <tr>
+                          <td class="py-1">
+                            {{ l.nombreProducto }}
+                            @if (l.esCortesia) { <span class="ml-1 text-xs text-primary-600">(cortesía)</span> }
+                          </td>
+                          <td class="py-1 text-right">{{ cantidadTexto(l.cantidad) }}</td>
+                          <td class="py-1 text-right">{{ dineroTexto(l.precioUnitario) }}</td>
+                          <td class="py-1 text-right">
+                            @if (l.esCortesia) { <span class="text-primary-600">GRATIS</span> }
+                            @else { {{ dineroTexto(l.totalLinea) }} }
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                    <tfoot>
+                      <tr class="border-t font-medium" style="border-color: var(--surface-border)">
+                        <td class="py-1" colspan="3">Total factura</td>
+                        <td class="py-1 text-right">{{ dineroTexto(f.total) }}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+      @if (vd.dias.length > 0) {
+        <div class="mt-2 flex flex-wrap justify-end gap-4 text-sm">
+          <span class="text-muted">{{ vd.numFacturas }} factura(s) en el periodo</span>
+          <span class="font-semibold text-primary-600">Total del periodo: {{ dineroTexto(vd.total) }}</span>
+        </div>
+      }
+    }
+  </div>
+
   <!-- Ganancia por producto -->
   <div>
     <h2 class="mb-2 font-semibold">Ganancia por producto</h2>
