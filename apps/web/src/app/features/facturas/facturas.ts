@@ -35,6 +35,7 @@ import {
   type FacturaDto,
   type FacturaResumenDto,
   type LineaFacturaInput,
+  type NegocioDto,
   type ProductoDto,
   type TipoPago,
 } from '@pane/shared';
@@ -44,6 +45,7 @@ import { FacturasService } from './facturas.service';
 
 const dinero = new Intl.NumberFormat('es-HN', { style: 'currency', currency: 'HNL' });
 const fecha = new Intl.DateTimeFormat('es-HN', { dateStyle: 'medium' });
+const fechaHora = new Intl.DateTimeFormat('es-HN', { dateStyle: 'short', timeStyle: 'short' });
 
 const SEV_ESTADO: Record<EstadoFactura, 'info' | 'success' | 'danger'> = {
   BORRADOR: 'info',
@@ -98,6 +100,7 @@ export class FacturasPage implements OnInit {
   protected readonly productos = signal<ProductoDto[]>([]);
   protected readonly clientes = signal<ClienteDto[]>([]);
   protected readonly config = signal<ConfiguracionDto | null>(null);
+  protected readonly negocio = signal<NegocioDto | null>(null);
   protected readonly cargando = signal(false);
   protected readonly guardando = signal(false);
 
@@ -229,6 +232,10 @@ export class FacturasPage implements OnInit {
     });
     this.service.configuracion().subscribe({
       next: (c) => this.config.set(c),
+      error: () => undefined,
+    });
+    this.service.negocio().subscribe({
+      next: (n) => this.negocio.set(n),
       error: () => undefined,
     });
   }
@@ -527,41 +534,108 @@ export class FacturasPage implements OnInit {
     });
   }
 
+  /**
+   * Imprime la factura como TICKET de 80mm (impresora térmica instalada como
+   * impresora de Windows). Usa `window.open` + CSS de 80mm (@page 80mm auto,
+   * monoespaciada, sin bordes) y dispara el diálogo de impresión del navegador.
+   * Los datos del negocio salen de /configuracion/negocio (variables de entorno).
+   */
   imprimir(f: FacturaDto): void {
-    const filas = f.detalles
-      .map(
-        (d) =>
-          `<tr><td>${d.nombreProducto}${d.esCortesia ? ' (cortesía)' : ''}</td><td style="text-align:right">${d.cantidad}</td>` +
-          `<td style="text-align:right">${dinero.format(Number(d.precioUnitario))}</td>` +
-          `<td style="text-align:right">${d.esCortesia ? 'GRATIS' : dinero.format(Number(d.totalLinea))}</td></tr>`,
-      )
-      .join('');
-    const cortesiaHtml =
-      Number(f.totalCortesia) > 0
-        ? `<div class="tot">Cortesía (valor regalado): -${dinero.format(Number(f.totalCortesia))}${f.motivoCortesia ? ` (${f.motivoCortesia})` : ''}</div>`
-        : '';
-    const cliente = f.clienteNombre ?? 'Consumidor final';
+    const n = this.negocio();
+    const esc = (s: string): string =>
+      s.replace(/[&<>]/g, (c) => (c === '&' ? '&amp;' : c === '<' ? '&lt;' : '&gt;'));
+    const money = (v: string | number): string => dinero.format(Number(v));
+    const row = (izq: string, der: string, clase = ''): string =>
+      `<div class="row ${clase}"><span>${izq}</span><span>${der}</span></div>`;
+
+    // Encabezado del negocio (nombre + datos opcionales).
+    const nombre = n?.nombre ?? 'Panadería';
+    const cab = [
+      `<div class="center bold big">${esc(nombre)}</div>`,
+      n?.direccion ? `<div class="center">${esc(n.direccion)}</div>` : '',
+      n?.telefono ? `<div class="center">Tel: ${esc(n.telefono)}</div>` : '',
+      n?.rtn ? `<div class="center">RTN: ${esc(n.rtn)}</div>` : '',
+    ].join('');
+
+    // Datos de la factura: número, fecha/hora, vendedor, cliente, estado.
     const numero = f.numero ?? String(f.id);
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Factura ${numero}</title>
-      <style>body{font-family:system-ui,sans-serif;padding:24px;color:#1f2937}
-      h1{color:#ea580c;margin:0 0 4px} table{width:100%;border-collapse:collapse;margin-top:16px}
-      th,td{padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:14px}
-      th{text-align:left;color:#6b7280} .tot{text-align:right;margin-top:12px;font-size:14px}
-      .tot strong{font-size:16px}</style></head><body>
-      <h1>🥖 Panadería</h1>
-      <div>Factura <strong>${numero}</strong> · ${fecha.format(new Date(f.fecha))}</div>
-      <div>Cliente: ${cliente}</div>
-      <div>Tipo de pago: ${TIPO_PAGO_LABEL[f.tipoPago]}${f.metodoPago ? ` (${f.metodoPago})` : ''} · Estado: ${ESTADO_FACTURA_LABEL[f.estado]}</div>
-      <table><thead><tr><th>Producto</th><th style="text-align:right">Cant.</th>
-      <th style="text-align:right">P. unit.</th><th style="text-align:right">Total</th></tr></thead>
-      <tbody>${filas}</tbody></table>
-      <div class="tot">Subtotal: ${dinero.format(Number(f.subtotal))}</div>
-      <div class="tot">Impuesto: ${dinero.format(Number(f.impuesto))}</div>
-      ${cortesiaHtml}
-      <div class="tot"><strong>Total: ${dinero.format(Number(f.total))}</strong></div>
-      <div class="tot">Saldo pendiente: ${dinero.format(Number(f.saldoPendiente))}</div>
-      </body></html>`;
-    const win = window.open('', '_blank', 'width=720,height=900');
+    const cliente = f.clienteNombre ?? 'Consumidor final';
+    const meta = [
+      `<div>Factura: <b>${esc(numero)}</b></div>`,
+      `<div>Fecha: ${fechaHora.format(new Date(f.fecha))}</div>`,
+      `<div>Vendedor: ${esc(f.usuarioNombre)}</div>`,
+      `<div>Cliente: ${esc(cliente)}</div>`,
+      f.estado !== 'EMITIDA'
+        ? `<div class="bold">** ${esc(ESTADO_FACTURA_LABEL[f.estado].toUpperCase())} **</div>`
+        : '',
+    ].join('');
+
+    // Líneas de producto: nombre y, debajo, "cant x precio ....... total".
+    const filas = f.detalles
+      .map((d) => {
+        const titulo = `${esc(d.nombreProducto)}${d.esCortesia ? ' (cortesía)' : ''}`;
+        const izq = `${d.cantidad} x ${money(d.precioUnitario)}`;
+        const der = d.esCortesia ? 'GRATIS' : money(d.totalLinea);
+        return `<div class="bold">${titulo}</div>${row(izq, der)}`;
+      })
+      .join('');
+
+    // Totales (impuesto y cortesía solo si aplican).
+    const totales = [
+      row('Subtotal', money(f.subtotal)),
+      Number(f.impuesto) > 0 ? row('Impuesto', money(f.impuesto)) : '',
+      Number(f.totalCortesia) > 0 ? row('Cortesía (valor)', `-${money(f.totalCortesia)}`) : '',
+      row('TOTAL', money(f.total), 'bold big'),
+    ].join('');
+    const cortesiaMotivo =
+      Number(f.totalCortesia) > 0 && f.motivoCortesia
+        ? `<div>Cortesía: ${esc(f.motivoCortesia)}</div>`
+        : '';
+
+    // Desglose de pago / saldo.
+    const pago =
+      f.tipoPago === 'CONTADO'
+        ? `<div>Pago: ${TIPO_PAGO_LABEL.CONTADO}${f.metodoPago ? ` · ${esc(f.metodoPago)}` : ''}</div>`
+        : [
+            `<div>Pago: ${TIPO_PAGO_LABEL.CREDITO} (${ESTADO_PAGO_LABEL[f.estadoPago]})</div>`,
+            row('Abonado', money(f.totalAbonado)),
+            row('Saldo pendiente', money(f.saldoPendiente), 'bold'),
+          ].join('');
+
+    const pie = n?.mensajePie
+      ? `<div class="sep"></div><div class="center">${esc(n.mensajePie)}</div>`
+      : '';
+
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Factura ${esc(numero)}</title>
+      <style>
+        @page { size: 80mm auto; margin: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { width: 80mm; background: #fff; }
+        .tk { width: 72mm; margin: 0 auto; padding: 3mm 0 6mm;
+              font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.35; color: #000; }
+        .center { text-align: center; }
+        .bold { font-weight: 700; }
+        .big { font-size: 14px; }
+        .sep { border-top: 1px dashed #000; margin: 5px 0; }
+        .row { display: flex; justify-content: space-between; gap: 8px; }
+        .row span:last-child { text-align: right; white-space: nowrap; }
+      </style></head><body>
+      <div class="tk">
+        ${cab}
+        <div class="sep"></div>
+        ${meta}
+        <div class="sep"></div>
+        ${filas}
+        <div class="sep"></div>
+        ${totales}
+        ${cortesiaMotivo}
+        <div class="sep"></div>
+        ${pago}
+        ${pie}
+      </div>
+    </body></html>`;
+
+    const win = window.open('', '_blank', 'width=380,height=640');
     if (!win) {
       this.error('Habilita las ventanas emergentes para imprimir.');
       return;

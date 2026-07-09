@@ -874,6 +874,30 @@ ocultamiento de UI por rol en Angular.
       futuro de cortesías/mermas de producto terminado [ver merma-producto-terminado].
       tests api[+2: mapper de cortesía — 66 total] + web[45 total, cubierto por e2e]
       verdes.)
+- [x] Mejora — Impresión de factura en ticket de 80mm (impresora térmica)
+      (Reemplaza la impresión A4 anterior por un TICKET de 80mm. DECISIONES con el
+      usuario: método = navegador + CSS 80mm [la térmica se instala como impresora
+      de Windows; sin agente ni bytes ESC/POS, funciona igual local y online];
+      reemplazar la A4 [el botón "Imprimir" ahora genera solo el ticket]; datos del
+      negocio por VARIABLE DE ENTORNO [editables en F12]; el ticket incluye mensaje
+      de pie, desglose de pago/saldo y fecha/hora + vendedor [sin QR]. SIN migración.
+      Backend: ConfiguracionService gana `obtenerNegocio()` [lee NEGOCIO_* de env vía
+      ConfigService; default nombre "Panadería" y pie "¡Gracias por su compra!", el
+      resto null si ausente/vacío] + endpoint GET /configuracion/negocio [JwtAuthGuard,
+      como el resto de configuración]. libs/shared: NegocioDto {nombre, direccion?,
+      telefono?, rtn?, mensajePie?}. .env(.example): NEGOCIO_NOMBRE/DIRECCION/TELEFONO/
+      RTN/MENSAJE_PIE. Web: FacturasService.negocio() [GET], facturas carga el negocio
+      en ngOnInit [signal]; `imprimir(f)` reescrito genera HTML de 80mm [@page size:
+      80mm auto, monoespaciada, sin bordes, filas nombre + "cant x precio → total"
+      con flex, cortesía=GRATIS, impuesto/cortesía solo si aplican, TOTAL, desglose de
+      pago [contado: método; crédito: abonado/saldo/estado], encabezado del negocio y
+      mensaje de pie]; escapa &<> de los textos; window.open + print. FacturaDto ya
+      traía usuarioNombre [vendedor] y fecha, no se tocó el backend de facturas.
+      Verificado: build api + web verdes [template estricto]. tests api[+3: obtenerNegocio
+      env/defaults/vacíos — 69 total] + web[+1: GET /configuracion/negocio — 46 total]
+      verdes. NOTA: sin corte automático ni apertura de gaveta [propio de ESC/POS]; el
+      usuario debe desactivar encabezados/pies del navegador una vez en la config de
+      impresión.)
 - [~] Feature 11 — Deploy (empaque de producción listo; falta la verificación
       end-to-end con Docker en la laptop — este entorno no tiene Docker daemon)
       (Empaque de PRODUCCIÓN con Docker, APARTE del docker-compose.yml de dev [que

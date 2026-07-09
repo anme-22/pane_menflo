@@ -13,3 +13,18 @@ export interface ConfiguracionDto {
   caiFechaLimite: string | null;
   pinEdicionActivo: boolean;
 }
+
+/**
+ * Datos del negocio para el encabezado/pie del ticket impreso. Vienen de
+ * variables de entorno (NEGOCIO_*), no de la BD; se vuelven editables desde la
+ * UI en la Feature 12 (Configuración). Los opcionales son null si no se definen.
+ */
+export interface NegocioDto {
+  nombre: string;
+  direccion: string | null;
+  telefono: string | null;
+  /** Registro tributario (RTN) del negocio. */
+  rtn: string | null;
+  /** Mensaje al pie del ticket (ej. "¡Gracias por su compra!"). */
+  mensajePie: string | null;
+}

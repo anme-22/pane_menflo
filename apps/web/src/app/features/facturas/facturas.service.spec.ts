@@ -55,4 +55,11 @@ describe('FacturasService', () => {
     expect(req.request.method).toBe('POST');
     req.flush({});
   });
+
+  it('negocio hace GET a /configuracion/negocio (datos del ticket)', () => {
+    service.negocio().subscribe();
+    const req = http.expectOne('/api/configuracion/negocio');
+    expect(req.request.method).toBe('GET');
+    req.flush({});
+  });
 });
