@@ -5,17 +5,21 @@ import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import type {
-  ConsumoInsumosReporteDto,
-  CuentasPorCobrarReporteDto,
-  GananciaReporteDto,
-  VentasReporteDto,
+import {
+  TIPO_PAGO_LABEL,
+  type ConsumoInsumosReporteDto,
+  type CuentasPorCobrarReporteDto,
+  type GananciaReporteDto,
+  type TipoPago,
+  type VentasDetalladasReporteDto,
+  type VentasReporteDto,
 } from '@pane/shared';
 import { ReportesService } from './reportes.service';
 
 const dinero = new Intl.NumberFormat('es-HN', { style: 'currency', currency: 'HNL' });
 const cantidad = new Intl.NumberFormat('es-HN', { maximumFractionDigits: 2 });
 const fecha = new Intl.DateTimeFormat('es-HN', { dateStyle: 'medium' });
+const hora = new Intl.DateTimeFormat('es-HN', { timeStyle: 'short' });
 
 /** Fecha local en formato YYYY-MM-DD para los inputs de tipo date. */
 function iso(d: Date): string {
@@ -43,6 +47,7 @@ export class ReportesPage implements OnInit {
   protected readonly generando = signal(false);
 
   protected readonly ventas = signal<VentasReporteDto | null>(null);
+  protected readonly ventasDetalle = signal<VentasDetalladasReporteDto | null>(null);
   protected readonly ganancia = signal<GananciaReporteDto | null>(null);
   protected readonly consumo = signal<ConsumoInsumosReporteDto | null>(null);
   protected readonly cuentas = signal<CuentasPorCobrarReporteDto | null>(null);
@@ -64,7 +69,7 @@ export class ReportesPage implements OnInit {
       return;
     }
     this.generando.set(true);
-    let pendientes = 3;
+    let pendientes = 4;
     const listo = () => {
       if (--pendientes === 0) {
         this.generando.set(false);
@@ -72,6 +77,10 @@ export class ReportesPage implements OnInit {
     };
     this.service.ventas(d, h).subscribe({
       next: (r) => { this.ventas.set(r); listo(); },
+      error: (e) => { this.fallar(e); listo(); },
+    });
+    this.service.ventasDetalle(d, h).subscribe({
+      next: (r) => { this.ventasDetalle.set(r); listo(); },
       error: (e) => { this.fallar(e); listo(); },
     });
     this.service.gananciaPorProducto(d, h).subscribe({
@@ -104,6 +113,12 @@ export class ReportesPage implements OnInit {
   }
   fechaDiaTexto(yyyymmdd: string): string {
     return fecha.format(new Date(`${yyyymmdd}T00:00:00`));
+  }
+  horaTexto(iso: string): string {
+    return hora.format(new Date(iso));
+  }
+  tipoPagoTexto(t: TipoPago): string {
+    return TIPO_PAGO_LABEL[t];
   }
   gananciaPositiva(v: string): boolean {
     return Number(v) >= 0;

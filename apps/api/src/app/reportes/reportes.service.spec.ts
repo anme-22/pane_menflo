@@ -75,6 +75,54 @@ describe('ReportesService', () => {
     expect(r.totalPorCobrar).toBe('700');
   });
 
+  it('ventas detalladas: agrupa por día → factura, total de línea y del día', async () => {
+    const dia = (h: string) =>
+      ({ toISOString: () => `2026-06-15T${h}:00.000Z` }) as Date;
+    const prisma = {
+      factura: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 1,
+            numero: null,
+            fecha: dia('08'),
+            total: dec(375),
+            tipoPago: 'CONTADO',
+            cliente: { nombre: 'Juan', apellido: 'Pérez' },
+            detalles: [
+              { productoId: 1, nombreProducto: 'Pan', cantidad: dec(50), precioUnitario: dec(7.5), esCortesia: false },
+            ],
+          },
+          {
+            id: 2,
+            numero: null,
+            fecha: dia('09'),
+            total: dec(0),
+            tipoPago: 'CONTADO',
+            cliente: null,
+            detalles: [
+              { productoId: 1, nombreProducto: 'Pan', cantidad: dec(2), precioUnitario: dec(7.5), esCortesia: true },
+            ],
+          },
+        ]),
+      },
+    };
+    const service = new ReportesService(prisma as never, {} as never);
+    const r = await service.ventasDetalladas('2026-06-01', '2026-06-30');
+
+    expect(r.dias).toHaveLength(1); // mismo día
+    const d = r.dias[0];
+    expect(d.fecha).toBe('2026-06-15');
+    expect(d.numFacturas).toBe(2);
+    expect(d.total).toBe('375'); // 375 + 0 (cortesía)
+    expect(d.facturas[0].clienteNombre).toBe('Juan Pérez');
+    expect(d.facturas[0].lineas[0].totalLinea).toBe('375'); // 50 × 7.5
+    expect(d.facturas[1].clienteNombre).toBeNull(); // consumidor final
+    expect(d.facturas[1].lineas[0].esCortesia).toBe(true);
+    expect(d.facturas[1].lineas[0].totalLinea).toBe('0'); // cortesía no cobra
+    expect(r.numFacturas).toBe(2);
+    expect(r.total).toBe('375');
+  });
+
   it('rango inválido -> 400', async () => {
     const service = new ReportesService({} as never, {} as never);
     await expect(service.ventas('xx', '2026-06-30')).rejects.toThrow();

@@ -3,8 +3,10 @@ import {
   ABREVIATURA_BASE,
   type ConsumoInsumosReporteDto,
   type CuentasPorCobrarReporteDto,
+  type FacturaVentaDto,
   type GananciaProductoDto,
   type GananciaReporteDto,
+  type VentasDetalladasReporteDto,
   type VentasReporteDto,
 } from '@pane/shared';
 import { PrismaService } from '../prisma/prisma.service';
@@ -69,6 +71,83 @@ export class ReportesService {
         numFacturas: v.numFacturas,
         total: r2(v.total).toString(),
       })),
+    };
+  }
+
+  /**
+   * Ventas detalladas del periodo (libro de ventas): por día → factura (con
+   * cliente) → líneas de producto (cantidad, precio, total). Solo facturas
+   * EMITIDA. El total de cada línea de cortesía es 0 (no cobra) y el total del
+   * día = Σ de los totales de sus facturas (que ya excluyen cortesías).
+   */
+  async ventasDetalladas(
+    desde?: string,
+    hasta?: string,
+  ): Promise<VentasDetalladasReporteDto> {
+    const r = this.rango(desde, hasta);
+    const facturas = await this.prisma.factura.findMany({
+      where: { estado: 'EMITIDA', fecha: { gte: r.gte, lte: r.lte } },
+      include: {
+        cliente: true,
+        detalles: {
+          select: {
+            productoId: true,
+            nombreProducto: true,
+            cantidad: true,
+            precioUnitario: true,
+            esCortesia: true,
+          },
+        },
+      },
+      orderBy: { fecha: 'asc' },
+    });
+
+    // Agrupa por día conservando el orden cronológico.
+    const porDia = new Map<string, { facturas: FacturaVentaDto[]; total: number }>();
+    let totalGeneral = 0;
+    for (const f of facturas) {
+      const facturaDto: FacturaVentaDto = {
+        facturaId: f.id,
+        numero: f.numero,
+        fecha: f.fecha.toISOString(),
+        clienteNombre: f.cliente
+          ? `${f.cliente.nombre} ${f.cliente.apellido}`.trim()
+          : null,
+        tipoPago: f.tipoPago,
+        lineas: f.detalles.map((d) => {
+          const totalLinea = d.esCortesia
+            ? 0
+            : Number(d.precioUnitario) * Number(d.cantidad);
+          return {
+            productoId: d.productoId,
+            nombreProducto: d.nombreProducto,
+            cantidad: Number(d.cantidad).toString(),
+            precioUnitario: Number(d.precioUnitario).toString(),
+            totalLinea: r2(totalLinea).toString(),
+            esCortesia: d.esCortesia,
+          };
+        }),
+        total: Number(f.total).toString(),
+      };
+      const dia = f.fecha.toISOString().slice(0, 10);
+      const acc = porDia.get(dia) ?? { facturas: [], total: 0 };
+      acc.facturas.push(facturaDto);
+      acc.total += Number(f.total);
+      porDia.set(dia, acc);
+      totalGeneral += Number(f.total);
+    }
+
+    return {
+      desde: r.desde,
+      hasta: r.hasta,
+      dias: [...porDia.entries()].map(([fecha, v]) => ({
+        fecha,
+        facturas: v.facturas,
+        numFacturas: v.facturas.length,
+        total: r2(v.total).toString(),
+      })),
+      numFacturas: facturas.length,
+      total: r2(totalGeneral).toString(),
     };
   }
 

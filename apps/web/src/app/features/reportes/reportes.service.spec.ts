@@ -28,6 +28,14 @@ describe('ReportesService', () => {
     req.flush({});
   });
 
+  it('ventasDetalle hace GET a /reportes/ventas-detalle con desde/hasta', () => {
+    service.ventasDetalle('2026-06-01', '2026-06-30').subscribe();
+    const req = http.expectOne((r) => r.url === '/api/reportes/ventas-detalle');
+    expect(req.request.params.get('desde')).toBe('2026-06-01');
+    expect(req.request.params.get('hasta')).toBe('2026-06-30');
+    req.flush({});
+  });
+
   it('ganancia hace GET a /reportes/ganancia-por-producto', () => {
     service.gananciaPorProducto('2026-06-01', '2026-06-30').subscribe();
     const req = http.expectOne((r) => r.url === '/api/reportes/ganancia-por-producto');

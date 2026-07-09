@@ -610,6 +610,25 @@ ocultamiento de UI por rol en Angular.
       el costo histórico por venta y la masa→varios productos quedan para la revisión
       futura de Producción. tests api[+5: ganancia, consumo, cuentas, rango] + web[+4:
       reportes service] verdes.)
+- [x] Mejora — Reporte de ventas por día (detalle / libro de ventas)
+      (Amplía Reportes (F10). El reporte "ventas por periodo" solo daba un resumen
+      por día (nº facturas + total); esta mejora agrega un DESGLOSE completo: por día
+      → factura (con nombre de cliente, nº, hora y tipo de pago) → líneas de producto
+      (nombre snapshot, cantidad, precio unitario y total de línea), con total por
+      factura y total del día. SIN migración (solo consulta sobre facturas EMITIDA).
+      Backend: ReportesService.ventasDetalladas(desde,hasta) [reutiliza el helper
+      `rango` y `r2`; agrupa por día conservando orden cronológico; la línea de
+      cortesía va con totalLinea 0 y NO suma —el total del día = Σ factura.total, que
+      ya excluye cortesías]. Endpoint GET /reportes/ventas-detalle [mismo guard:
+      admin/super_admin]. libs/shared: LineaVentaDto, FacturaVentaDto [con
+      tipoPago/esCortesia], DiaVentaDto, VentasDetalladasReporteDto (reporte.ts
+      importa TipoPago de factura.ts). Web: nueva sección "Ventas por día (detalle)"
+      en /reportes bajo el mismo filtro de periodo [pendientes 3→4]; tarjeta por día
+      (cabecera con total) → sub-bloque por factura (cliente, hora, Tag de tipo de
+      pago) → tabla de líneas con GRATIS/(cortesía) marcadas; responsive. Verificado:
+      build web (template estricto) + build api verdes. tests api[+1: agrupa por día,
+      totalLinea 50×7.5=375, cortesía totalLinea 0, consumidor final null — 6 en
+      reportes] + web[+1: GET /ventas-detalle — 5 en reportes] verdes.)
 - [x] Mejora — Costos indirectos + Seed de demo (Pan Blanco)
       (Mejora del costeo: ahora el costo por bolsa incluye COSTOS INDIRECTOS. Prisma:
       enum `TipoCostoIndirecto` (POR_QUINTAL/POR_MES), tabla `costo_indirecto`
