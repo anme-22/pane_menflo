@@ -54,6 +54,23 @@ const INDIRECTOS: { nombre: string; monto: number; tipo: 'POR_QUINTAL' | 'POR_ME
 ];
 const QUINTALES_POR_MES = 100;
 
+// Clientes de demo para el ambiente de trabajo. Las identidades son REALES del
+// censo (grl.censo_nacional), así el autocompletado por identidad calza si cargas
+// el censo. sexo: 1 = Masculino, 2 = Femenino (ver catálogo de sexo).
+const CLIENTES: {
+  identidad: string;
+  nombre: string;
+  apellido: string;
+  telefono: string;
+  sexo: number;
+}[] = [
+  { identidad: '0813196600135', nombre: 'GUADALUPE', apellido: 'MARTINEZ CRUZ', telefono: '9988-1122', sexo: 1 },
+  { identidad: '0813196600136', nombre: 'OSCAR ORLANDO', apellido: 'GARCIA SOBALBARRO', telefono: '9871-2233', sexo: 1 },
+  { identidad: '0813196600139', nombre: 'RINA FRANCISCA', apellido: 'MARTINEZ AGUILAR', telefono: '9765-3344', sexo: 2 },
+  { identidad: '0813196600140', nombre: 'JOSE RUBEN', apellido: 'ARIAS BANEGAS', telefono: '9654-4455', sexo: 1 },
+  { identidad: '0813196600141', nombre: 'MARIA VIRGINIA', apellido: 'ARIAS LOPEZ', telefono: '9543-5566', sexo: 2 },
+];
+
 async function main() {
   // --- unidades base (ya sembradas; NO se crean) ---
   const unidades = await prisma.unidadMedida.findMany();
@@ -181,6 +198,16 @@ async function main() {
     });
   }
   console.log(`✓ Costos indirectos (${INDIRECTOS.length}) y quintalesPorMes = ${QUINTALES_POR_MES}.`);
+
+  // --- clientes de demo (upsert por identidad; NO pisa ediciones del usuario) ---
+  for (const c of CLIENTES) {
+    await prisma.cliente.upsert({
+      where: { identidad: c.identidad },
+      create: c,
+      update: {},
+    });
+  }
+  console.log(`✓ Clientes de demo (${CLIENTES.length}).`);
 
   await imprimirDesglose(producto.id, sucursalId, unidad);
 }
