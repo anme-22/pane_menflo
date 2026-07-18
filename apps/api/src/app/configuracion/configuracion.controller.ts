@@ -1,5 +1,5 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
-import type { ConfiguracionDto } from '@pane/shared';
+import type { ConfiguracionDto, NegocioDto } from '@pane/shared';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ConfiguracionService } from './configuracion.service';
 
@@ -15,5 +15,11 @@ export class ConfiguracionController {
   @Get()
   obtener(): Promise<ConfiguracionDto> {
     return this.configuracion.obtenerDto();
+  }
+
+  /** Datos del negocio para el ticket impreso (desde variables de entorno). */
+  @Get('negocio')
+  negocio(): NegocioDto {
+    return this.configuracion.obtenerNegocio();
   }
 }

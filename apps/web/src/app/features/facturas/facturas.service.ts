@@ -9,6 +9,7 @@ import type {
   FacturaDto,
   FacturaResumenDto,
   FacturasQuery,
+  NegocioDto,
   Paginado,
   RegistrarAbonoRequest,
 } from '@pane/shared';
@@ -59,5 +60,10 @@ export class FacturasService {
 
   configuracion(): Observable<ConfiguracionDto> {
     return this.http.get<ConfiguracionDto>(`${API_BASE}/configuracion`);
+  }
+
+  /** Datos del negocio (encabezado/pie del ticket 80mm). */
+  negocio(): Observable<NegocioDto> {
+    return this.http.get<NegocioDto>(`${API_BASE}/configuracion/negocio`);
   }
 }
